@@ -46,7 +46,7 @@ fun AppLoadingScreen(
                 painter = painterResource(id = R.drawable.splash_logo),
                 contentDescription = "LABA Logo",
                 modifier = Modifier
-                    .size(150.dp)
+                    .size(120.dp)
                     .alpha(alpha)
             )
             
