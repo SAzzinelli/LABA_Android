@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- LABA Brand Colors (identici all'iOS) -->
+    <color name="LABA_Blue">#1976D2</color>
+    <color name="LABA_Blue_Light">#63A4FF</color>
+    <color name="LABA_Blue_Dark">#004BA0</color>
+
+    <!-- Room Category Colors (identici all'iOS) -->
+    <color name="Photography_Blue">#2196F3</color>
+    <color name="Darkroom_Purple">#9C27B0</color>
+    <color name="Design_Orange">#FF9800</color>
+    <color name="Printing_Green">#4CAF50</color>
+    <color name="Library_Brown">#8D6E63</color>
+    <color name="Cinema_Red">#F44336</color>
+
+    <!-- Status Colors -->
+    <color name="Success_Green">#4CAF50</color>
+    <color name="Warning_Orange">#FF9800</color>
+    <color name="Error_Red">#F44336</color>
+    <color name="Info_Blue">#2196F3</color>
+    <color name="Neutral_Gray">#9E9E9E</color>
+
+    <!-- Light Theme Colors -->
+    <color name="Purple80">#63A4FF</color>
+    <color name="PurpleGrey80">#CCC2DC</color>
+    <color name="Pink80">#EFB8C8</color>
+
+    <!-- Dark Theme Colors -->
+    <color name="Purple40">#1976D2</color>
+    <color name="PurpleGrey40">#625b71</color>
+    <color name="Pink40">#7D5260</color>
+</resources>

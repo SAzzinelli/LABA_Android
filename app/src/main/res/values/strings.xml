@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LABA Firenze</string>
+    
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_exams">Esami</string>
+    <string name="nav_courses">Corsi</string>
+    <string name="nav_seminars">Seminari</string>
+    <string name="nav_profile">Profilo</string>
+    
+    <!-- Login -->
+    <string name="login_title">Accedi a LABA</string>
+    <string name="login_username">Username</string>
+    <string name="login_password">Password</string>
+    <string name="login_button">Accedi</string>
+    <string name="login_error">Errore di login</string>
+    <string name="login_loading">Accesso in corso...</string>
+    
+    <!-- Common -->
+    <string name="loading">Caricamento...</string>
+    <string name="error">Errore</string>
+    <string name="retry">Riprova</string>
+    <string name="cancel">Annulla</string>
+    <string name="ok">OK</string>
+    <string name="back">Indietro</string>
+    <string name="search">Cerca</string>
+    <string name="filter">Filtra</string>
+    <string name="logout">Esci</string>
+    <string name="logout_confirm">Sei sicuro di voler uscire?</string>
+    
+    <!-- Profile -->
+    <string name="profile_title">Profilo</string>
+    <string name="profile_resources">Risorse</string>
+    <string name="profile_assistance">Assistenza</string>
+    <string name="profile_preferences">Preferenze</string>
+    <string name="profile_contacts">Contatti</string>
+    <string name="profile_useful_links">Link utili</string>
+    <string name="profile_actions">Azioni</string>
+    
+    <!-- Materials -->
+    <string name="materials_title">Programmi didattici</string>
+    <string name="handouts_title">Dispense</string>
+    <string name="thesis_title">Tesi di laurea</string>
+    <string name="regulations_title">Regolamenti</string>
+    <string name="faq_title">FAQ</string>
+    <string name="appearance_title">Aspetto</string>
+    
+    <!-- Exams -->
+    <string name="exams_title">Esami</string>
+    <string name="exams_all">Tutti</string>
+    <string name="exams_bookable">Prenotabili</string>
+    <string name="exams_passed">Superati</string>
+    <string name="exams_pending">In attesa</string>
+    
+    <!-- Courses -->
+    <string name="courses_title">Corsi</string>
+    <string name="courses_regular">Corsi</string>
+    <string name="courses_workshop">Workshop / Seminari / Tirocinio</string>
+    <string name="courses_thesis">Tesi Finale</string>
+    
+    <!-- Seminars -->
+    <string name="seminars_title">Seminari</string>
+    <string name="seminars_bookable">Prenotabile</string>
+    <string name="seminars_book">Prenota</string>
+    
+</resources>
