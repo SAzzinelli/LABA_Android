@@ -295,10 +295,10 @@ fun ExamCard(
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape(16.dp)
     ) {
         Column(
-            modifier = Modifier.padding(24.dp)
+            modifier = Modifier.padding(16.dp)
         ) {
             // Header con titolo e CFA
             Row(
@@ -339,7 +339,7 @@ fun ExamCard(
                         text = docente,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 6.dp)
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                 }
             }
@@ -347,68 +347,85 @@ fun ExamCard(
             // Chips container
             @OptIn(ExperimentalLayoutApi::class)
             FlowRow(
-                modifier = Modifier.padding(top = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.padding(top = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 // Anno
-                AssistChip(
-                    onClick = { },
-                    label = { 
-                        Text(
-                            getItalianOrdinalYear(exam.anno?.toIntOrNull() ?: 1),
-                            style = MaterialTheme.typography.labelMedium
-                        ) 
-                    },
-                    leadingIcon = {
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Icon(
                             Icons.Filled.School,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer
                         )
-                    },
-                    colors = AssistChipDefaults.assistChipColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f),
-                        labelColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                )
+                        Text(
+                            text = getItalianOrdinalYear(exam.anno?.toIntOrNull() ?: 1),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
                 
                 // Stato voto con icona appropriata
                 if (!exam.voto.isNullOrEmpty()) {
                     val gradeColor = getGradeColor(exam.voto)
-                    AssistChip(
-                        onClick = { },
-                        label = { Text(exam.voto, fontWeight = FontWeight.Medium) },
-                        leadingIcon = {
+                    Surface(
+                        color = gradeColor.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Icon(
                                 Icons.Filled.Star,
                                 contentDescription = null,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(14.dp),
+                                tint = gradeColor
                             )
-                        },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = gradeColor.copy(alpha = 0.15f),
-                            labelColor = gradeColor,
-                            leadingIconContentColor = gradeColor
-                        )
-                    )
+                            Text(
+                                text = exam.voto,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = gradeColor,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
                 } else {
-                    AssistChip(
-                        onClick = { },
-                        label = { Text("Da sostenere", fontWeight = FontWeight.Medium) },
-                        leadingIcon = {
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Icon(
                                 Icons.Filled.Schedule,
                                 contentDescription = null,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
-                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            leadingIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    )
+                            Text(
+                                text = "Da sostenere",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
                 }
                 
             }

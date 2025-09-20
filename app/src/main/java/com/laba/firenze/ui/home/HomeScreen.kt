@@ -5,6 +5,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -53,7 +54,7 @@ fun HomeScreen(
     
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 80.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // HERO SECTION
@@ -864,33 +865,40 @@ private fun PerTeSection(onNavigate: (String) -> Unit) {
                 containerColor = MaterialTheme.colorScheme.surface
             )
         ) {
-            LazyColumn(
-                modifier = Modifier.height(250.dp),
-                contentPadding = PaddingValues(vertical = 4.dp)
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(shortcuts.size) { index ->
-                    val (icon, label) = shortcuts[index]
-                    ListItem(
-                        headlineContent = { Text(label) },
-                        leadingContent = { 
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = null,
-                                tint = LABA_Blue
+                shortcuts.forEach { (icon, label) ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable { onNavigate(label) },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        ListItem(
+                            headlineContent = { Text(label) },
+                            leadingContent = { 
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    tint = LABA_Blue
+                                )
+                            },
+                            trailingContent = {
+                                Icon(
+                                    imageVector = Icons.Default.ChevronRight,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            colors = ListItemDefaults.colors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer
                             )
-                        },
-                        trailingContent = {
-                            Icon(
-                                imageVector = Icons.Default.ChevronRight,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        modifier = Modifier.clickable { onNavigate(label) }
-                    )
-                    if (index < shortcuts.size - 1) {
-                        HorizontalDivider(
-                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                         )
                     }
                 }

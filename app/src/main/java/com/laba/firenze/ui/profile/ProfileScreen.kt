@@ -1,18 +1,23 @@
 package com.laba.firenze.ui.profile
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -31,7 +36,8 @@ fun ProfileScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(bottom = 80.dp)
     ) {
         // Profile Header
         item {
@@ -103,18 +109,36 @@ fun ProfileScreen(
         
         // Contacts Section
         item {
+            val context = LocalContext.current
             ProfileSection(
                 title = "Contatti",
                 items = listOf(
-                    ProfileLinkItem(
-                        title = "Email LABA",
+                    ProfileMenuActionItem(
+                        title = "Email Segreteria",
                         icon = Icons.Default.Email,
-                        value = uiState.userProfile?.emailLABA ?: "N/A"
+                        subtitle = "info@laba.biz",
+                        onClick = {
+                            val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
+                                data = Uri.parse("mailto:info@laba.biz")
+                                putExtra(Intent.EXTRA_SUBJECT, "Richiesta informazioni")
+                            }
+                            if (emailIntent.resolveActivity(context.packageManager) != null) {
+                                context.startActivity(emailIntent)
+                            }
+                        }
                     ),
-                    ProfileLinkItem(
-                        title = "Telefono",
+                    ProfileMenuActionItem(
+                        title = "Telefono Segreteria",
                         icon = Icons.Default.Phone,
-                        value = uiState.userProfile?.telefono ?: "N/A"
+                        subtitle = "055 653 0786",
+                        onClick = {
+                            val phoneIntent = Intent(Intent.ACTION_DIAL).apply {
+                                data = Uri.parse("tel:0556530786")
+                            }
+                            if (phoneIntent.resolveActivity(context.packageManager) != null) {
+                                context.startActivity(phoneIntent)
+                            }
+                        }
                     )
                 )
             )
@@ -122,13 +146,48 @@ fun ProfileScreen(
         
         // Useful Links Section
         item {
+            val context = LocalContext.current
             ProfileSection(
                 title = "Link utili",
                 items = listOf(
                     ProfileMenuActionItem(
                         title = "Sito LABA",
                         icon = Icons.Default.Language,
-                        onClick = { /* TODO: Open LABA website */ }
+                        subtitle = "www.laba.biz",
+                        onClick = {
+                            val webIntent = Intent(Intent.ACTION_VIEW).apply {
+                                data = Uri.parse("https://www.laba.biz")
+                            }
+                            if (webIntent.resolveActivity(context.packageManager) != null) {
+                                context.startActivity(webIntent)
+                            }
+                        }
+                    ),
+                    ProfileActionItem(
+                        title = "Pagamento DSU Toscana",
+                        icon = Icons.Default.Payment,
+                        iconColor = MaterialTheme.colorScheme.error,
+                        onClick = {
+                            val webIntent = Intent(Intent.ACTION_VIEW).apply {
+                                data = Uri.parse("https://iris.rete.toscana.it/public")
+                            }
+                            if (webIntent.resolveActivity(context.packageManager) != null) {
+                                context.startActivity(webIntent)
+                            }
+                        }
+                    ),
+                    ProfileMenuActionItem(
+                        title = "Privacy Policy",
+                        icon = Icons.Default.PrivacyTip,
+                        subtitle = "Informativa sulla privacy",
+                        onClick = {
+                            val webIntent = Intent(Intent.ACTION_VIEW).apply {
+                                data = Uri.parse("https://www.laba.biz/privacy-policy")
+                            }
+                            if (webIntent.resolveActivity(context.packageManager) != null) {
+                                context.startActivity(webIntent)
+                            }
+                        }
                     )
                 )
             )
@@ -229,16 +288,11 @@ private fun ProfileSection(
             color = LABA_Blue
         )
         
-        Card(
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column {
-                items.forEachIndexed { index, item ->
-                    ProfileMenuItem(item = item)
-                    if (index < items.size - 1) {
-                        HorizontalDivider()
-                    }
-                }
+            items.forEach { item ->
+                ProfileMenuItem(item = item)
             }
         }
     }
@@ -248,73 +302,126 @@ private fun ProfileSection(
 private fun ProfileMenuItem(item: ProfileMenuItem) {
     when (item) {
         is ProfileMenuActionItem -> {
-            ListItem(
-                headlineContent = { Text(item.title) },
-                leadingContent = {
-                    Icon(
-                        imageVector = item.icon,
-                        contentDescription = item.title,
-                        tint = LABA_Blue
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { item.onClick() },
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                ListItem(
+                    headlineContent = { Text(item.title) },
+                    supportingContent = item.subtitle?.let { { Text(it) } },
+                    leadingContent = {
+                        Icon(
+                            imageVector = item.icon,
+                            contentDescription = item.title,
+                            tint = LABA_Blue
+                        )
+                    },
+                    trailingContent = {
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = "Navigate",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    colors = ListItemDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
                     )
-                },
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.Default.ChevronRight,
-                        contentDescription = "Navigate",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                modifier = Modifier.clickable { item.onClick() }
-            )
+                )
+            }
         }
         is ProfileToggleItem -> {
-            ListItem(
-                headlineContent = { Text(item.title) },
-                leadingContent = {
-                    Icon(
-                        imageVector = item.icon,
-                        contentDescription = item.title,
-                        tint = LABA_Blue
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp)),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                ListItem(
+                    headlineContent = { Text(item.title) },
+                    leadingContent = {
+                        Icon(
+                            imageVector = item.icon,
+                            contentDescription = item.title,
+                            tint = LABA_Blue
+                        )
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = item.isChecked,
+                            onCheckedChange = item.onCheckedChange
+                        )
+                    },
+                    colors = ListItemDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
                     )
-                },
-                trailingContent = {
-                    Switch(
-                        checked = item.isChecked,
-                        onCheckedChange = item.onCheckedChange
-                    )
-                }
-            )
+                )
+            }
         }
         is ProfileLinkItem -> {
-            ListItem(
-                headlineContent = { Text(item.title) },
-                supportingContent = { Text(item.value) },
-                leadingContent = {
-                    Icon(
-                        imageVector = item.icon,
-                        contentDescription = item.title,
-                        tint = LABA_Blue
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp)),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                ListItem(
+                    headlineContent = { Text(item.title) },
+                    supportingContent = { Text(item.value) },
+                    leadingContent = {
+                        Icon(
+                            imageVector = item.icon,
+                            contentDescription = item.title,
+                            tint = LABA_Blue
+                        )
+                    },
+                    colors = ListItemDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
                     )
-                }
-            )
+                )
+            }
         }
         is ProfileActionItem -> {
-            ListItem(
-                headlineContent = { 
-                    Text(
-                        text = item.title,
-                        color = item.iconColor
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { item.onClick() },
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                ListItem(
+                    headlineContent = { 
+                        Text(
+                            text = item.title,
+                            color = item.iconColor
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            imageVector = item.icon,
+                            contentDescription = item.title,
+                            tint = item.iconColor
+                        )
+                    },
+                    colors = ListItemDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
                     )
-                },
-                leadingContent = {
-                    Icon(
-                        imageVector = item.icon,
-                        contentDescription = item.title,
-                        tint = item.iconColor
-                    )
-                },
-                modifier = Modifier.clickable { item.onClick() }
-            )
+                )
+            }
         }
     }
 }
@@ -325,7 +432,8 @@ sealed class ProfileMenuItem
 data class ProfileMenuActionItem(
     val title: String,
     val icon: ImageVector,
-    val onClick: () -> Unit
+    val onClick: () -> Unit,
+    val subtitle: String? = null
 ) : ProfileMenuItem()
 
 data class ProfileToggleItem(

@@ -11,6 +11,10 @@
         <item name="android:navigationBarColor" tools:targetApi="l">@android:color/transparent</item>
         <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="o">true</item>
+        <!-- Splash Screen customization -->
+        <item name="android:windowSplashScreenBackground" tools:targetApi="s">@android:color/white</item>
+        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="s">@drawable/splash_logo</item>
+        <item name="android:windowSplashScreenIconBackgroundColor" tools:targetApi="s">@android:color/white</item>
         <!-- Customize your theme here. -->
     </style>
 </resources>

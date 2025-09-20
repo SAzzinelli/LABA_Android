@@ -256,3 +256,4 @@ data class ThesisInfoResponse(
     val errorSummary: String? = null,
     val errorMessage: String? = null
 ) : Parcelable
+

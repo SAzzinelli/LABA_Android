@@ -27,6 +27,7 @@ interface LogosUniApiService {
         @Body request: Map<String, Any> = emptyMap() // Empty request body for POST
     ): Response<NotificationsResponse>
 
+
     @POST("logosuni.servicesv2/api/Notifications/MarkAsRead")
     suspend fun markNotificationAsRead(
         @Header("Authorization") token: String,

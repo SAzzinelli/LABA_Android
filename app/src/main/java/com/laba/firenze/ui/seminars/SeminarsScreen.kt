@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -110,9 +111,9 @@ private fun SeminarCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = seminar.titolo,
+                    text = prettifyTitle(seminarTitle(seminar.titolo)),
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = MaterialTheme.typography.titleMedium.fontWeight,
+                    fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
                 )
                 

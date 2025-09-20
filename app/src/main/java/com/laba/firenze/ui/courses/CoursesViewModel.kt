@@ -50,7 +50,11 @@ class CoursesViewModel @Inject constructor(
     }
     
     private fun filterCourses(courses: List<Esame>, searchQuery: String, selectedYear: String): List<Esame> {
-        var filtered = courses
+        // First filter out TESI and ATTIVITÀ A SCELTA
+        var filtered = courses.filter { course ->
+            val courseTitle = course.corso.uppercase()
+            !courseTitle.contains("TESI") && !courseTitle.contains("ATTIVITÀ A SCELTA")
+        }
         
         // Filter by year
         if (selectedYear != "Tutti") {

@@ -2,6 +2,7 @@ package com.laba.firenze.ui
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -19,6 +20,7 @@ import com.laba.firenze.R
 import com.laba.firenze.ui.common.AppLoadingScreen
 import com.laba.firenze.ui.common.LoginScreen
 import com.laba.firenze.ui.courses.CoursesScreen
+import com.laba.firenze.ui.documents.*
 import com.laba.firenze.ui.exams.ExamsScreen
 import com.laba.firenze.ui.exams.ExamDetailScreen
 import com.laba.firenze.ui.home.HomeScreen
@@ -49,7 +51,9 @@ fun LABANavigation(
     )
 
     Scaffold(
-        modifier = modifier,
+        modifier = modifier
+            .fillMaxSize()
+            .statusBarsPadding(),
         bottomBar = {
             NavigationBar {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -116,6 +120,17 @@ fun LABANavigation(
             }
             composable("prenotazione-aule") {
                 PrenotazioneAuleScreen(navController)
+            }
+            
+            // Document Section Routes
+            composable("materials") {
+                ProgrammiScreen(navController)
+            }
+            composable("handouts") {
+                DispenseScreen(navController)
+            }
+            composable("thesis") {
+                TesiScreen(navController)
             }
         }
     }
