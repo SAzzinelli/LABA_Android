@@ -403,8 +403,9 @@ fun ExamCard(
                         }
                     }
                 } else {
+                    // Badge "Da sostenere" rosso senza bordi
                     Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                        color = MaterialTheme.colorScheme.errorContainer,
                         shape = RoundedCornerShape(20.dp)
                     ) {
                         Row(
@@ -416,12 +417,12 @@ fun ExamCard(
                                 Icons.Filled.Schedule,
                                 contentDescription = null,
                                 modifier = Modifier.size(14.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = MaterialTheme.colorScheme.onErrorContainer
                             )
                             Text(
                                 text = "Da sostenere",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
                                 fontWeight = FontWeight.Medium
                             )
                         }

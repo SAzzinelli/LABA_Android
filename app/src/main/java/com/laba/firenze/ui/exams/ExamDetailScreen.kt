@@ -107,8 +107,21 @@ fun ExamDetailScreen(
             }
             
             // Sezione Propedeuticità (se presente)
+            // Logica corretta: un esame ha un prerequisito solo se è il "2" o "3" di una materia
+            // Esempio: "Architettura Interni 2" richiede "Architettura Interni 1"
             val prerequisite = uiState.allExams.firstOrNull { prerequisiteExam ->
-                (exam.propedeutico ?: "").uppercase().contains(prerequisiteExam.corso.uppercase())
+                val examCourse = exam.corso.uppercase()
+                val prerequisiteCourse = prerequisiteExam.corso.uppercase()
+                
+                // Estrai il numero dall'esame attuale (se presente)
+                val examNumber = examCourse.filter { it.isDigit() }.toIntOrNull()
+                val prerequisiteNumber = prerequisiteCourse.filter { it.isDigit() }.toIntOrNull()
+                
+                // L'esame attuale deve essere 2 o 3, e il prerequisito deve essere il numero precedente
+                examNumber != null && prerequisiteNumber != null && 
+                examNumber > 1 && prerequisiteNumber == examNumber - 1 &&
+                // Controlla che sia la stessa materia (stesso nome senza numero)
+                examCourse.replace(Regex("\\d+"), "").trim() == prerequisiteCourse.replace(Regex("\\d+"), "").trim()
             }
             
             if (prerequisite != null) {
@@ -149,20 +162,25 @@ fun ExamDetailScreen(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     } else {
-                                        AssistChip(
-                                            onClick = { },
-                                            label = { Text("Da sostenere") },
-                                            colors = AssistChipDefaults.assistChipColors(
-                                                containerColor = MaterialTheme.colorScheme.errorContainer,
-                                                labelColor = MaterialTheme.colorScheme.onErrorContainer
+                                        // Badge senza bordo, solo sfondo colorato
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.errorContainer,
+                                            shape = MaterialTheme.shapes.small,
+                                            modifier = Modifier.padding(top = 4.dp)
+                                        ) {
+                                            Text(
+                                                text = "Da sostenere",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                             )
-                                        )
+                                        }
                                     }
                                 }
                             }
                             
                             Text(
-                                text = "È necessario aver superato questo esame per poter prenotare ${prettifyTitle(exam.corso)}.",
+                                text = "È necessario aver superato ${prettifyTitle(prerequisite.corso)} per poter prenotare ${prettifyTitle(exam.corso)}.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 8.dp)
@@ -172,10 +190,23 @@ fun ExamDetailScreen(
                 }
             }
             
-            // Sezione Propedeutico per (se presente)
-            if (!exam.propedeutico.isNullOrEmpty()) {
-                val clean = exam.propedeutico.replace("Corso propedeutico per ", "")
+            // Sezione Propedeuticità - mostra quali esami questo esame sblocca
+            val unlockedExams = uiState.allExams.filter { potentialExam ->
+                val examCourse = exam.corso.uppercase()
+                val potentialCourse = potentialExam.corso.uppercase()
                 
+                // Estrai i numeri
+                val examNumber = examCourse.filter { it.isDigit() }.toIntOrNull()
+                val potentialNumber = potentialCourse.filter { it.isDigit() }.toIntOrNull()
+                
+                // L'esame attuale deve essere 1 o 2, e l'esame sbloccato deve essere il numero successivo
+                examNumber != null && potentialNumber != null && 
+                potentialNumber == examNumber + 1 &&
+                // Controlla che sia la stessa materia
+                examCourse.replace(Regex("\\d+"), "").trim() == potentialCourse.replace(Regex("\\d+"), "").trim()
+            }
+            
+            if (unlockedExams.isNotEmpty()) {
                 item {
                     Card {
                         Column(
@@ -188,25 +219,28 @@ fun ExamDetailScreen(
                                 modifier = Modifier.padding(bottom = 12.dp)
                             )
                             
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Warning,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.padding(end = 12.dp)
-                                )
-                                
-                                Text(
-                                    text = prettifyTitle(clean),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Bold
-                                )
+                            unlockedExams.forEach { unlockedExam ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.ArrowForward,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(end = 12.dp)
+                                    )
+                                    
+                                    Text(
+                                        text = prettifyTitle(unlockedExam.corso),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
                             }
                             
                             Text(
-                                text = "Superando ${prettifyTitle(exam.corso)} potrai prenotare i corsi indicati di seguito.",
+                                text = "Superando ${prettifyTitle(exam.corso)} potrai prenotare questi esami.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 8.dp)
@@ -216,38 +250,37 @@ fun ExamDetailScreen(
                 }
             }
             
-            // Sezione Prenotazione
+            // Sezione Prenotazione - Pulsante
             item {
-                Card {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
+                if (exam.richiedibile) {
+                    Button(
+                        onClick = { showBookingAlert = true },
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(
-                            text = "Prenotazione",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 12.dp)
+                        Icon(
+                            imageVector = Icons.Filled.Event,
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 8.dp)
                         )
-                        
-                        if (exam.richiedibile) {
-                            Button(
-                                onClick = { showBookingAlert = true },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Event,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(end = 8.dp)
-                                )
-                                Text("Prenota ora")
-                            }
-                        } else {
-                            Text(
-                                text = "Prenotazione non disponibile",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Text("Prenota ora")
+                    }
+                } else {
+                    // Pulsante disattivato per prenotazione non disponibile
+                    Button(
+                        onClick = { },
+                        enabled = false,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.EventBusy,
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text("Prenotazione non disponibile")
                     }
                 }
             }
