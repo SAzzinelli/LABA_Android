@@ -264,4 +264,33 @@ class LogosUniAPIClient @Inject constructor(
             else -> null
         }
     }
+    
+    // MARK: - Thesis Documents
+    
+    suspend fun getThesisDocuments(token: String): ThesisDocumentsResponse {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.getThesisDocuments("Bearer $token")
+                if (response.isSuccessful) {
+                    response.body() ?: ThesisDocumentsResponse(
+                        success = false,
+                        errors = listOf("Empty response"),
+                        payload = emptyList()
+                    )
+                } else {
+                    ThesisDocumentsResponse(
+                        success = false,
+                        errors = listOf("HTTP ${response.code()}: ${response.message()}"),
+                        payload = emptyList()
+                    )
+                }
+            } catch (e: Exception) {
+                ThesisDocumentsResponse(
+                    success = false,
+                    errors = listOf(e.message ?: "Unknown error"),
+                    payload = emptyList()
+                )
+            }
+        }
+    }
 }

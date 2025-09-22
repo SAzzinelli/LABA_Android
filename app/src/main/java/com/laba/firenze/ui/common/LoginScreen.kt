@@ -3,6 +3,7 @@ package com.laba.firenze.ui.common
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -71,13 +72,16 @@ fun LoginScreen(
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(60.dp))
+            Spacer(modifier = Modifier.height(80.dp))
             
-            // LABA Logo
+            // LABA Logo - usa logo blu in light mode, bianco in dark mode
+            val isDarkTheme = isSystemInDarkTheme()
             Image(
-                painter = painterResource(id = R.drawable.splash_logo),
+                painter = painterResource(
+                    id = if (isDarkTheme) R.drawable.bianco else R.drawable.blu
+                ),
                 contentDescription = "LABA Logo",
-                modifier = Modifier.size(200.dp)
+                modifier = Modifier.size(160.dp)
             )
             
             Spacer(modifier = Modifier.height(40.dp))
@@ -95,7 +99,7 @@ fun LoginScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -107,7 +111,12 @@ fun LoginScreen(
                     TextField(
                         value = userBase,
                         onValueChange = { userBase = it },
-                        placeholder = { Text("nome.cognome") },
+                        placeholder = { 
+                            Text(
+                                "nome.cognome",
+                                fontSize = 14.sp
+                            ) 
+                        },
                         modifier = Modifier.weight(1f),
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
@@ -147,7 +156,7 @@ fun LoginScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -159,7 +168,12 @@ fun LoginScreen(
                     TextField(
                         value = password,
                         onValueChange = { password = it },
-                        placeholder = { Text("Password") },
+                        placeholder = { 
+                            Text(
+                                "Password",
+                                fontSize = 14.sp
+                            ) 
+                        },
                         modifier = Modifier
                             .weight(1f)
                             .focusRequester(passwordFocusRequester),
@@ -253,7 +267,7 @@ fun LoginScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 40.dp)
             )
         }
         
@@ -261,7 +275,7 @@ fun LoginScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(top = 24.dp, end = 16.dp),
             horizontalArrangement = Arrangement.End
         ) {
             IconButton(

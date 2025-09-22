@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -20,17 +21,21 @@ import com.laba.firenze.R
 import com.laba.firenze.ui.common.AppLoadingScreen
 import com.laba.firenze.ui.common.LoginScreen
 import com.laba.firenze.ui.courses.CoursesScreen
-import com.laba.firenze.ui.documents.*
+import com.laba.firenze.ui.documents.ProgrammiScreen
+import com.laba.firenze.ui.documents.DispenseScreen
 import com.laba.firenze.ui.exams.ExamsScreen
 import com.laba.firenze.ui.exams.ExamDetailScreen
 import com.laba.firenze.ui.home.HomeScreen
 import com.laba.firenze.ui.perte.*
 import com.laba.firenze.ui.profile.ProfileScreen
+import com.laba.firenze.ui.thesis.ThesisScreen
+import com.laba.firenze.ui.thesis.PergamenaScreen
+import com.laba.firenze.ui.regolamenti.RegolamentiScreen
 import com.laba.firenze.ui.seminars.SeminarsScreen
 
 sealed class LABANavigation(val route: String, val icon: ImageVector, val title: String) {
     object Home : LABANavigation("home", Icons.Default.Home, "Home")
-    object Exams : LABANavigation("exams", Icons.Default.Assignment, "Esami")
+    object Exams : LABANavigation("exams", Icons.AutoMirrored.Filled.Assignment, "Esami")
     object Courses : LABANavigation("courses", Icons.Default.School, "Corsi")
     object Seminars : LABANavigation("seminars", Icons.Default.Event, "Seminari")
     object Profile : LABANavigation("profile", Icons.Default.Person, "Profilo")
@@ -65,6 +70,23 @@ fun LABANavigation(
                         label = { Text(screen.title) },
                         selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
                         onClick = {
+                            // Se sei già nella sezione principale, non fare niente
+                            if (currentDestination?.route == screen.route) {
+                                return@NavigationBarItem
+                            }
+                            
+                            // Se sei in una sottosezione della stessa sezione, torna alla principale
+                            val isInSubsection = currentDestination?.route?.startsWith(screen.route + "/") == true
+                            if (isInSubsection) {
+                                navController.navigate(screen.route) {
+                                    popUpTo(screen.route) {
+                                        inclusive = false
+                                    }
+                                }
+                                return@NavigationBarItem
+                            }
+                            
+                            // Altrimenti naviga normalmente alla sezione
                             navController.navigate(screen.route) {
                                 // Pop up to the start destination of the graph to
                                 // avoid building up a large stack of destinations
@@ -82,7 +104,7 @@ fun LABANavigation(
                 }
             }
         }
-    ) { innerPadding ->
+    ) { _ -> // innerPadding non utilizzato
         NavHost(
             navController = navController,
             startDestination = LABANavigation.Home.route,
@@ -121,6 +143,21 @@ fun LABANavigation(
             composable("prenotazione-aule") {
                 PrenotazioneAuleScreen(navController)
             }
+            composable("grades/trend") {
+                GradeTrendScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToExams = { navController.navigate(LABANavigation.Exams.route) }
+                )
+            }
+            composable("thesis") {
+                ThesisScreen(navController)
+            }
+            composable("pergamena") {
+                PergamenaScreen(navController)
+            }
+            composable("regulations") {
+                RegolamentiScreen(navController)
+            }
             
             // Document Section Routes
             composable("materials") {
@@ -128,9 +165,6 @@ fun LABANavigation(
             }
             composable("handouts") {
                 DispenseScreen(navController)
-            }
-            composable("thesis") {
-                TesiScreen(navController)
             }
         }
     }

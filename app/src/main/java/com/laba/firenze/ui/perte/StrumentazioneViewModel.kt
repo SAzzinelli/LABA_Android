@@ -27,6 +27,7 @@ class StrumentazioneViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true)
             
             try {
+                @Suppress("UNUSED_VARIABLE")
                 val userProfile = sessionRepository.getUserProfile()
                 val accessToken = sessionRepository.getAccessToken()
                 

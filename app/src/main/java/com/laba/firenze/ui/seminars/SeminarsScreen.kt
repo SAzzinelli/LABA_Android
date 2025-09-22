@@ -3,6 +3,7 @@ package com.laba.firenze.ui.seminars
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -46,16 +47,17 @@ fun SeminarsScreen(
             }
         )
         
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Search Bar
+        // Barra di ricerca (identica a Esami)
         OutlinedTextField(
             value = uiState.searchQuery,
             onValueChange = viewModel::updateSearchQuery,
-            label = { Text("Cerca seminari") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            placeholder = { Text("Cerca seminari") },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            singleLine = true,
+            shape = RoundedCornerShape(28.dp), // Forma capsula
             trailingIcon = {
                 if (uiState.searchQuery.isNotEmpty()) {
                     IconButton(onClick = { viewModel.updateSearchQuery("") }) {
@@ -63,7 +65,6 @@ fun SeminarsScreen(
                     }
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(
                 onSearch = { keyboardController?.hide() }
@@ -75,19 +76,18 @@ fun SeminarsScreen(
             EmptyState()
         } else {
             LazyColumn(
-                contentPadding = PaddingValues(bottom = 80.dp),
+                contentPadding = PaddingValues(bottom = 120.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(uiState.seminars) { seminar ->
                     SeminarCard(
                         seminar = seminar,
                         onClick = { 
-                            // TODO: Navigate to seminar detail
+                            // Seminari non cliccabili per ora
                         }
                     )
                 }
             }
-        }
         }
     }
 }
@@ -99,7 +99,10 @@ private fun SeminarCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        onClick = onClick
+        onClick = onClick,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -111,7 +114,7 @@ private fun SeminarCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = prettifyTitle(seminarTitle(seminar.titolo)),
+                    text = prettifyTitle(seminar.titolo),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
@@ -200,3 +203,4 @@ private fun EmptyState() {
 fun SeminarsViewModel(): SeminarsViewModel {
     return hiltViewModel()
 }
+

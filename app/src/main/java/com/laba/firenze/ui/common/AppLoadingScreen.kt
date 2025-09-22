@@ -2,6 +2,7 @@ package com.laba.firenze.ui.common
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.*
@@ -41,9 +42,12 @@ fun AppLoadingScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // Logo LABA con animazione
+            // Logo LABA con animazione - usa logo blu in light mode, bianco in dark mode
+            val isDarkTheme = isSystemInDarkTheme()
             Image(
-                painter = painterResource(id = R.drawable.splash_logo),
+                painter = painterResource(
+                    id = if (isDarkTheme) R.drawable.bianco else R.drawable.blu
+                ),
                 contentDescription = "LABA Logo",
                 modifier = Modifier
                     .size(120.dp)

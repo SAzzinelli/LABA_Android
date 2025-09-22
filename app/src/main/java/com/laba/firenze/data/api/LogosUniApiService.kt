@@ -50,4 +50,7 @@ interface LogosUniApiService {
     // MARK: - Thesis (identico a iOS endpoints)
     @GET("logosuni.servicesv2/api/ThesisInfo")
     suspend fun getThesisInfo(@Header("Authorization") token: String): Response<ThesisInfoResponse>
+    
+    @GET("logosuni.servicesv2/api/ThesisInfo")
+    suspend fun getThesisDocuments(@Header("Authorization") token: String): Response<ThesisDocumentsResponse>
 }

@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
@@ -34,7 +35,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.laba.firenze.domain.model.Esame
-import com.laba.firenze.ui.theme.LABA_Blue
 import kotlin.math.*
 import kotlin.random.Random
 import java.text.SimpleDateFormat
@@ -53,8 +53,10 @@ fun HomeScreen(
     }
     
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 80.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding(), // Aggiunge padding per la status bar trasparente
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 80.dp), // Ridotto per evitare scroll eccessivo
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // HERO SECTION
@@ -156,8 +158,8 @@ private fun HeroSection(
             .shadow(
                 elevation = 10.dp,
                 shape = RoundedCornerShape(22.dp),
-                ambientColor = LABA_Blue.copy(alpha = 0.18f),
-                spotColor = LABA_Blue.copy(alpha = 0.18f)
+                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
             )
     ) {
         // Confetti overlay
@@ -191,6 +193,8 @@ private fun HeroSection(
 
 @Composable
 private fun StatusPillsRow(heroInfo: HeroInfo, pills: List<String>, isGraduated: Boolean) {
+    // pills parameter not used but kept for API consistency
+    @Suppress("UNUSED_PARAMETER")
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -237,7 +241,7 @@ private fun getItalianOrdinalYear(year: Int): String {
 @Composable
 private fun Pill(text: String) {
     val lighterAccent = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-    val outlineAccent = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+    // val outlineAccent = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f) // Non utilizzata
     
     Text(
         text = text,
@@ -261,8 +265,7 @@ private fun KpiCardsSection(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         shape = RoundedCornerShape(16.dp)
     ) {
         Row(
@@ -303,27 +306,21 @@ private fun KpiCardsSection(
 private fun KpiCard(
     title: String,
     value: String,
-    emphasizeGlow: Boolean,
+    emphasizeGlow: Boolean, // Non utilizzato ma mantenuto per coerenza API
     isComplete: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    @Suppress("UNUSED_PARAMETER")
     
     Box(
         modifier = modifier.height(96.dp)
     ) {
         // Main card con depth
         Card(
-            modifier = Modifier
-                .fillMaxSize()
-                .shadow(
-                    elevation = 6.dp,
-                    shape = RoundedCornerShape(14.dp),
-                    ambientColor = Color.Black.copy(alpha = 0.04f),
-                    spotColor = Color.Black.copy(alpha = 0.04f)
-                ),
+            modifier = Modifier.fillMaxSize(),
             shape = RoundedCornerShape(14.dp),
             colors = CardDefaults.cardColors(
-                containerColor = if (isComplete) LABA_Blue else MaterialTheme.colorScheme.surface
+                containerColor = if (isComplete) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer
             )
         ) {
             Column(
@@ -338,12 +335,12 @@ private fun KpiCard(
                         imageVector = Icons.Rounded.EmojiEvents,
                         contentDescription = null,
                         modifier = Modifier.size(28.dp),
-                        tint = Color.White
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Text(
                         text = "Hai sostenuto tutti gli esami!",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.95f),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         textAlign = TextAlign.Center
                     )
                 } else {
@@ -375,9 +372,8 @@ private fun YearProgressAndAverageSection(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -446,12 +442,12 @@ private fun YearProgressCard(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = null,
                     modifier = Modifier.size(12.dp),
-                    tint = LABA_Blue
+                    tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
                     text = "Completati",
                     style = MaterialTheme.typography.labelSmall,
-                    color = LABA_Blue
+                    color = MaterialTheme.colorScheme.primary
                 )
             } else {
                 Text(
@@ -473,7 +469,7 @@ private fun ThinProgressBar(progress: Double) {
             .fillMaxWidth()
             .height(6.dp)
             .clip(RoundedCornerShape(3.dp))
-            .background(LABA_Blue.copy(alpha = 0.14f))
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f))
     ) {
         Box(
             modifier = Modifier
@@ -482,8 +478,8 @@ private fun ThinProgressBar(progress: Double) {
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            LABA_Blue.copy(alpha = 0.8f),
-                            LABA_Blue.copy(alpha = 0.35f)
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
                         )
                     )
                 )
@@ -549,8 +545,8 @@ private fun CareerAverageCard(
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
-                                LABA_Blue.copy(alpha = 0.8f),
-                                LABA_Blue.copy(alpha = 0.35f)
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
                             )
                         )
                     )
@@ -582,17 +578,10 @@ private fun LessonsTodayCard(lessons: List<LessonUi>) {
     if (lessons.isEmpty()) return
     
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = 6.dp,
-                shape = RoundedCornerShape(16.dp),
-                ambientColor = LABA_Blue.copy(alpha = 0.08f),
-                spotColor = LABA_Blue.copy(alpha = 0.08f)
-            ),
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
     ) {
         Column(
@@ -727,7 +716,7 @@ private fun DayBadge(date: String, text: String = "", isNow: Boolean = false) {
             .clip(CircleShape)
             .background(
                 if (isNow) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                else LABA_Blue.copy(alpha = 0.8f)
+                else MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
             )
             .padding(8.dp),
         contentAlignment = Alignment.Center
@@ -786,18 +775,11 @@ private fun DayBadge(date: String, text: String = "", isNow: Boolean = false) {
 @Composable
 private fun UpcomingExamsCard(count: Int) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = 6.dp,
-                shape = RoundedCornerShape(16.dp),
-                ambientColor = LABA_Blue.copy(alpha = 0.08f),
-                spotColor = LABA_Blue.copy(alpha = 0.08f)
-            ),
-        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        shape = RoundedCornerShape(16.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -808,7 +790,7 @@ private fun UpcomingExamsCard(count: Int) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Assignment,
+                    imageVector = Icons.AutoMirrored.Filled.Assignment,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -841,66 +823,54 @@ private fun PerTeSection(onNavigate: (String) -> Unit) {
     )
     
     Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = LABA_Blue)
+            Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Text("Per te", style = MaterialTheme.typography.titleMedium)
         }
         
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(
-                    elevation = 6.dp,
-                    shape = RoundedCornerShape(22.dp),
-                    ambientColor = LABA_Blue.copy(alpha = 0.08f),
-                    spotColor = LABA_Blue.copy(alpha = 0.08f)
+        // Card separate per ogni shortcut
+        shortcuts.forEach { (icon, label) ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNavigate(label) },
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
                 ),
-            shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                shape = RoundedCornerShape(16.dp)
             ) {
-                shortcuts.forEach { (icon, label) ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .clickable { onNavigate(label) },
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer
-                        ),
-                        shape = RoundedCornerShape(16.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        ListItem(
-                            headlineContent = { Text(label) },
-                            leadingContent = { 
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = null,
-                                    tint = LABA_Blue
-                                )
-                            },
-                            trailingContent = {
-                                Icon(
-                                    imageVector = Icons.Default.ChevronRight,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            colors = ListItemDefaults.colors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainer
-                            )
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
                         )
                     }
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
@@ -941,14 +911,15 @@ private fun AnimatedGlowBackground(
     isActive: Boolean,
     phase: Float
 ) {
+    val primaryColor = MaterialTheme.colorScheme.primary
     Canvas(modifier = modifier) {
         if (isActive) {
-            drawAnimatedGradient(size, phase)
+            drawAnimatedGradient(size, phase, primaryColor)
         }
     }
 }
 
-private fun DrawScope.drawAnimatedGradient(size: Size, phase: Float) {
+private fun DrawScope.drawAnimatedGradient(size: Size, phase: Float, primaryColor: Color) {
     val spotsCount = 6
     val seeds = listOf(123f, 456f, 789f, 321f, 654f, 987f)
     
@@ -966,9 +937,9 @@ private fun DrawScope.drawAnimatedGradient(size: Size, phase: Float) {
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    LABA_Blue.copy(alpha = 0.85f),
-                    LABA_Blue.copy(alpha = 0.35f),
-                    LABA_Blue.copy(alpha = 0f)
+                    primaryColor.copy(alpha = 0.85f),
+                    primaryColor.copy(alpha = 0.35f),
+                    primaryColor.copy(alpha = 0f)
                 ),
                 center = center,
                 radius = radius

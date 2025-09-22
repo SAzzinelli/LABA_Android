@@ -59,7 +59,7 @@ class SimulaMediaViewModel @Inject constructor(
      */
     private fun getCoreExams(exams: List<Esame>): List<Esame> {
         return exams.filter { exam ->
-            val title = exam.corso?.lowercase() ?: ""
+            val title = exam.corso.lowercase()
             !title.contains("attivit") && !title.contains("tesi")
         }
     }
@@ -101,7 +101,7 @@ class SimulaMediaViewModel @Inject constructor(
         return coreExams.filter { exam ->
             val voto = exam.voto?.trim() ?: ""
             voto.isEmpty() && exam.data == null
-        }.map { prettifyTitle(it.corso ?: "") }
+        }.map { prettifyTitle(it.corso) }
     }
     
     private fun prettifyTitle(title: String): String {
@@ -128,7 +128,7 @@ class SimulaMediaViewModel @Inject constructor(
      */
     fun getProfessorSurname(courseTitle: String): String? {
         val exam = _uiState.value.coreExams.find { 
-            prettifyTitle(it.corso ?: "") == courseTitle || it.corso == courseTitle 
+            prettifyTitle(it.corso) == courseTitle || it.corso == courseTitle 
         }
         val fullName = exam?.docente?.trim()
         if (fullName.isNullOrEmpty()) return null
@@ -142,7 +142,7 @@ class SimulaMediaViewModel @Inject constructor(
      */
     fun getCfaForCourse(courseTitle: String): Int? {
         val exam = _uiState.value.coreExams.find { 
-            prettifyTitle(it.corso ?: "") == courseTitle || it.corso == courseTitle 
+            prettifyTitle(it.corso) == courseTitle || it.corso == courseTitle 
         }
         return exam?.cfa?.toIntOrNull()
     }

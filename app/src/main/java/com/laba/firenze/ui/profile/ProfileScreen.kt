@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,7 +23,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.laba.firenze.ui.theme.LABA_Blue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +37,7 @@ fun ProfileScreen(
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(bottom = 80.dp)
+        contentPadding = PaddingValues(bottom = 120.dp)
     ) {
         // Profile Header
         item {
@@ -61,7 +61,7 @@ fun ProfileScreen(
                     ),
                     ProfileMenuActionItem(
                         title = "Tesi di laurea",
-                        icon = Icons.Default.Book,
+                        icon = Icons.Default.School,
                         onClick = { navController.navigate("thesis") }
                     )
                 )
@@ -75,12 +75,12 @@ fun ProfileScreen(
                 items = listOf(
                     ProfileMenuActionItem(
                         title = "Regolamenti",
-                        icon = Icons.Default.Rule,
+                        icon = Icons.AutoMirrored.Filled.Rule,
                         onClick = { navController.navigate("regulations") }
                     ),
                     ProfileMenuActionItem(
                         title = "FAQ",
-                        icon = Icons.Default.Help,
+                        icon = Icons.AutoMirrored.Filled.Help,
                         onClick = { /* TODO: Implement FAQ */ }
                     )
                 )
@@ -122,8 +122,19 @@ fun ProfileScreen(
                                 data = Uri.parse("mailto:info@laba.biz")
                                 putExtra(Intent.EXTRA_SUBJECT, "Richiesta informazioni")
                             }
-                            if (emailIntent.resolveActivity(context.packageManager) != null) {
-                                context.startActivity(emailIntent)
+                            try {
+                                if (emailIntent.resolveActivity(context.packageManager) != null) {
+                                    context.startActivity(emailIntent)
+                                } else {
+                                    // Fallback: apri browser con mailto
+                                    val fallbackIntent = Intent(Intent.ACTION_VIEW).apply {
+                                        data = Uri.parse("mailto:info@laba.biz")
+                                    }
+                                    context.startActivity(fallbackIntent)
+                                }
+                            } catch (e: Exception) {
+                                // Log dell'errore per debug
+                                android.util.Log.e("ProfileScreen", "Errore apertura email: ${e.message}")
                             }
                         }
                     ),
@@ -135,8 +146,15 @@ fun ProfileScreen(
                             val phoneIntent = Intent(Intent.ACTION_DIAL).apply {
                                 data = Uri.parse("tel:0556530786")
                             }
-                            if (phoneIntent.resolveActivity(context.packageManager) != null) {
-                                context.startActivity(phoneIntent)
+                            try {
+                                if (phoneIntent.resolveActivity(context.packageManager) != null) {
+                                    context.startActivity(phoneIntent)
+                                } else {
+                                    // Fallback: mostra numero in toast
+                                    android.widget.Toast.makeText(context, "Numero: 055 653 0786", android.widget.Toast.LENGTH_LONG).show()
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("ProfileScreen", "Errore apertura telefono: ${e.message}")
                             }
                         }
                     )
@@ -155,11 +173,47 @@ fun ProfileScreen(
                         icon = Icons.Default.Language,
                         subtitle = "www.laba.biz",
                         onClick = {
-                            val webIntent = Intent(Intent.ACTION_VIEW).apply {
-                                data = Uri.parse("https://www.laba.biz")
-                            }
-                            if (webIntent.resolveActivity(context.packageManager) != null) {
-                                context.startActivity(webIntent)
+                            try {
+                                // Crea Intent con chooser per selezionare browser
+                                val webIntent = Intent(Intent.ACTION_VIEW).apply {
+                                    data = Uri.parse("https://www.laba.biz")
+                                }
+                                
+                                // Crea chooser per permettere selezione browser
+                                val chooserIntent = Intent.createChooser(webIntent, "Apri con...")
+                                
+                                if (chooserIntent.resolveActivity(context.packageManager) != null) {
+                                    context.startActivity(chooserIntent)
+                                } else {
+                                    // Fallback: prova browser specifici
+                                    val browserPackages = listOf(
+                                        "com.android.chrome",           // Chrome
+                                        "com.android.browser",          // Browser di sistema
+                                        "org.mozilla.firefox",          // Firefox
+                                        "com.opera.browser",            // Opera
+                                        "com.sec.android.app.sbrowser"  // Samsung Browser
+                                    )
+                                    
+                                    var opened = false
+                                    for (packageName in browserPackages) {
+                                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                                            data = Uri.parse("https://www.laba.biz")
+                                            setPackage(packageName)
+                                        }
+                                        if (intent.resolveActivity(context.packageManager) != null) {
+                                            context.startActivity(intent)
+                                            opened = true
+                                            break
+                                        }
+                                    }
+                                    
+                                    if (!opened) {
+                                        android.widget.Toast.makeText(context, "Sito: https://www.laba.biz", android.widget.Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("ProfileScreen", "Errore apertura browser: ${e.message}")
+                                android.widget.Toast.makeText(context, "Errore apertura browser", android.widget.Toast.LENGTH_SHORT).show()
                             }
                         }
                     ),
@@ -168,11 +222,47 @@ fun ProfileScreen(
                         icon = Icons.Default.Payment,
                         iconColor = MaterialTheme.colorScheme.error,
                         onClick = {
-                            val webIntent = Intent(Intent.ACTION_VIEW).apply {
-                                data = Uri.parse("https://iris.rete.toscana.it/public")
-                            }
-                            if (webIntent.resolveActivity(context.packageManager) != null) {
-                                context.startActivity(webIntent)
+                            try {
+                                // Crea Intent con chooser per selezionare browser
+                                val webIntent = Intent(Intent.ACTION_VIEW).apply {
+                                    data = Uri.parse("https://iris.rete.toscana.it/public")
+                                }
+                                
+                                // Crea chooser per permettere selezione browser
+                                val chooserIntent = Intent.createChooser(webIntent, "Apri con...")
+                                
+                                if (chooserIntent.resolveActivity(context.packageManager) != null) {
+                                    context.startActivity(chooserIntent)
+                                } else {
+                                    // Fallback: prova browser specifici
+                                    val browserPackages = listOf(
+                                        "com.android.chrome",           // Chrome
+                                        "com.android.browser",          // Browser di sistema
+                                        "org.mozilla.firefox",          // Firefox
+                                        "com.opera.browser",            // Opera
+                                        "com.sec.android.app.sbrowser"  // Samsung Browser
+                                    )
+                                    
+                                    var opened = false
+                                    for (packageName in browserPackages) {
+                                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                                            data = Uri.parse("https://iris.rete.toscana.it/public")
+                                            setPackage(packageName)
+                                        }
+                                        if (intent.resolveActivity(context.packageManager) != null) {
+                                            context.startActivity(intent)
+                                            opened = true
+                                            break
+                                        }
+                                    }
+                                    
+                                    if (!opened) {
+                                        android.widget.Toast.makeText(context, "DSU: https://iris.rete.toscana.it/public", android.widget.Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("ProfileScreen", "Errore apertura DSU: ${e.message}")
+                                android.widget.Toast.makeText(context, "Errore apertura DSU", android.widget.Toast.LENGTH_SHORT).show()
                             }
                         }
                     ),
@@ -181,11 +271,47 @@ fun ProfileScreen(
                         icon = Icons.Default.PrivacyTip,
                         subtitle = "Informativa sulla privacy",
                         onClick = {
-                            val webIntent = Intent(Intent.ACTION_VIEW).apply {
-                                data = Uri.parse("https://www.laba.biz/privacy-policy")
-                            }
-                            if (webIntent.resolveActivity(context.packageManager) != null) {
-                                context.startActivity(webIntent)
+                            try {
+                                // Crea Intent con chooser per selezionare browser
+                                val webIntent = Intent(Intent.ACTION_VIEW).apply {
+                                    data = Uri.parse("https://www.laba.biz/privacy-policy")
+                                }
+                                
+                                // Crea chooser per permettere selezione browser
+                                val chooserIntent = Intent.createChooser(webIntent, "Apri con...")
+                                
+                                if (chooserIntent.resolveActivity(context.packageManager) != null) {
+                                    context.startActivity(chooserIntent)
+                                } else {
+                                    // Fallback: prova browser specifici
+                                    val browserPackages = listOf(
+                                        "com.android.chrome",           // Chrome
+                                        "com.android.browser",          // Browser di sistema
+                                        "org.mozilla.firefox",          // Firefox
+                                        "com.opera.browser",            // Opera
+                                        "com.sec.android.app.sbrowser"  // Samsung Browser
+                                    )
+                                    
+                                    var opened = false
+                                    for (packageName in browserPackages) {
+                                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                                            data = Uri.parse("https://www.laba.biz/privacy-policy")
+                                            setPackage(packageName)
+                                        }
+                                        if (intent.resolveActivity(context.packageManager) != null) {
+                                            context.startActivity(intent)
+                                            opened = true
+                                            break
+                                        }
+                                    }
+                                    
+                                    if (!opened) {
+                                        android.widget.Toast.makeText(context, "Privacy: https://www.laba.biz/privacy-policy", android.widget.Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("ProfileScreen", "Errore apertura privacy: ${e.message}")
+                                android.widget.Toast.makeText(context, "Errore apertura privacy", android.widget.Toast.LENGTH_SHORT).show()
                             }
                         }
                     )
@@ -204,15 +330,9 @@ fun ProfileScreen(
                         onClick = { viewModel.refreshData() }
                     ),
                     ProfileActionItem(
-                        title = "Debug",
-                        icon = Icons.Default.BugReport,
-                        iconColor = Color(0xFF6200EA),
-                        onClick = { viewModel.showDebugInfo() }
-                    ),
-                    ProfileActionItem(
                         title = "Esci",
-                        icon = Icons.Default.ExitToApp,
-                        iconColor = MaterialTheme.colorScheme.error,
+                        icon = Icons.AutoMirrored.Filled.ExitToApp,
+                        iconColor = MaterialTheme.colorScheme.primary,
                         onClick = { viewModel.logout() }
                     )
                 )
@@ -226,7 +346,7 @@ private fun ProfileHeader(userProfile: com.laba.firenze.domain.model.StudentProf
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = LABA_Blue
+            containerColor = MaterialTheme.colorScheme.primaryContainer
         )
     ) {
         Column(
@@ -256,17 +376,73 @@ private fun ProfileHeader(userProfile: com.laba.firenze.domain.model.StudentProf
                 }
                 
                 Column {
-                    Text(
-                        text = userProfile?.displayName ?: "Studente LABA",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = userProfile?.matricola ?: "Matricola non disponibile",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.9f)
-                    )
+                            Text(
+                                text = userProfile?.displayName ?: "Studente LABA",
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                fontWeight = FontWeight.Bold
+                            )
+                }
+            }
+            
+            // Pillole sotto il nome
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                        // Pillola stato pagamenti (verde o rossa)
+                        val pagamentiInRegola = userProfile?.pagamenti?.lowercase()?.contains("ok") == true
+                Surface(
+                    color = if (pagamentiInRegola) {
+                        Color(0xFF4CAF50) // Verde per pagamenti in regola
+                    } else {
+                        Color(0xFFF44336) // Rosso per pagamenti non in regola
+                    },
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            if (pagamentiInRegola) Icons.Filled.Check else Icons.Filled.Warning,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = Color.White
+                        )
+                        Text(
+                            text = if (pagamentiInRegola) "Pagamenti in regola" else "Pagamenti in ritardo",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                
+                // Pillola numero matricola (grigia)
+                Surface(
+                    color = Color.White.copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Filled.Badge,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = Color.White
+                        )
+                        Text(
+                            text = "Matricola: ${userProfile?.matricola ?: "N/A"}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
         }
@@ -285,7 +461,7 @@ private fun ProfileSection(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            color = LABA_Blue
+            color = MaterialTheme.colorScheme.primary
         )
         
         Column(
@@ -319,7 +495,7 @@ private fun ProfileMenuItem(item: ProfileMenuItem) {
                         Icon(
                             imageVector = item.icon,
                             contentDescription = item.title,
-                            tint = LABA_Blue
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     },
                     trailingContent = {
@@ -351,7 +527,7 @@ private fun ProfileMenuItem(item: ProfileMenuItem) {
                         Icon(
                             imageVector = item.icon,
                             contentDescription = item.title,
-                            tint = LABA_Blue
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     },
                     trailingContent = {
@@ -383,7 +559,7 @@ private fun ProfileMenuItem(item: ProfileMenuItem) {
                         Icon(
                             imageVector = item.icon,
                             contentDescription = item.title,
-                            tint = LABA_Blue
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     },
                     colors = ListItemDefaults.colors(

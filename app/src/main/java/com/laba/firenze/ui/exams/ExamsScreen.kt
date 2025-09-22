@@ -156,6 +156,7 @@ fun ExamsScreen(
             placeholder = { Text("Cerca esami") },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             singleLine = true,
+            shape = RoundedCornerShape(28.dp), // Forma capsula
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.None,
                 imeAction = ImeAction.Search
@@ -165,36 +166,31 @@ fun ExamsScreen(
             )
         )
         
-        // Picker anni (identico a iOS)
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        // Year Filter (come in Corsi)
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f),
-                        MaterialTheme.shapes.medium
-                    )
-                    .padding(6.dp)
-            ) {
-                years.forEach { year ->
-                    FilterChip(
-                        onClick = { selectedYear = year },
-                        label = { Text(getItalianOrdinalYear(year)) },
-                        selected = selectedYear == year,
-                        modifier = Modifier.weight(1f),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+            years.forEach { year ->
+                FilterChip(
+                    onClick = { selectedYear = year },
+                    label = { 
+                        Text(
+                            text = getItalianOrdinalYear(year),
+                            textAlign = TextAlign.Center
                         )
-                    )
-                    if (year < years.last()) Spacer(modifier = Modifier.width(8.dp))
-                }
+                    },
+                    selected = selectedYear == year,
+                    modifier = Modifier
+                        .width(80.dp)
+                        .clip(RoundedCornerShape(20.dp)),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                        containerColor = Color.Transparent
+                    ),
+                    shape = RoundedCornerShape(20.dp)
+                )
             }
         }
         
@@ -207,8 +203,10 @@ fun ExamsScreen(
             }
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 80.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding(), // Aggiunge padding per la status bar trasparente
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 120.dp), // Aumentato per evitare taglio
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Esami regolari
@@ -284,16 +282,11 @@ fun ExamCard(
     exam: Esame,
     onClick: () -> Unit
 ) {
-    ElevatedCard(
+    Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = 2.dp,
-            pressedElevation = 6.dp,
-            hoveredElevation = 4.dp
-        ),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
         shape = RoundedCornerShape(16.dp)
     ) {

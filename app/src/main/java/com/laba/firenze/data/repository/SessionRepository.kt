@@ -8,6 +8,8 @@ import com.laba.firenze.data.local.KeychainHelper
 import com.laba.firenze.data.local.SessionTokenManager
 import com.laba.firenze.data.local.TokenStore
 import com.laba.firenze.domain.model.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -193,7 +195,7 @@ class SessionRepository @Inject constructor(
                     tokenResponse.access_token,
                     tokenResponse.refresh_token ?: "",
                     tokenResponse.token_type ?: "Bearer",
-                    tokenResponse.expires_in?.toLong() ?: 3600
+                    tokenResponse.expires_in?.toLong() ?: 3600L
                 )
                 
                 // Reset backoff dopo successo
@@ -403,6 +405,56 @@ class SessionRepository @Inject constructor(
     
     fun getAccessToken(): String {
         return tokenManager.accessToken.value
+    }
+    
+    suspend fun getThesisDocuments(): List<com.laba.firenze.ui.thesis.ThesisDocument> {
+        return try {
+            val token = tokenManager.accessToken.value
+            val response = apiClient.getThesisDocuments(token)
+            response.payload?.map { item ->
+                com.laba.firenze.ui.thesis.ThesisDocument(
+                    id = item.allegatoOid,
+                    title = prettifyTitle(item.descrizione),
+                    type = getDocumentType(item.descrizione),
+                    icon = getDocumentIcon(item.descrizione),
+                    url = null
+                )
+            } ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+    
+    private fun prettifyTitle(title: String): String {
+        return title.lowercase()
+            .split(" ")
+            .joinToString(" ") { word ->
+                word.replaceFirstChar { it.uppercase() }
+            }
+    }
+    
+    private fun getDocumentType(descrizione: String): String {
+        val desc = descrizione.lowercase()
+        return when {
+            desc.contains("regolamento") -> "PDF"
+            desc.contains("domanda") -> "DOCX"
+            desc.contains("frontespizio") -> "DOCX"
+            desc.contains("bollettino") -> "PDF"
+            desc.contains("pergamena") -> "PDF"
+            else -> "PDF"
+        }
+    }
+    
+    private fun getDocumentIcon(descrizione: String): androidx.compose.ui.graphics.vector.ImageVector {
+        val desc = descrizione.lowercase()
+        return when {
+            desc.contains("regolamento") -> Icons.Default.Book
+            desc.contains("domanda") -> Icons.Default.Description
+            desc.contains("frontespizio") -> Icons.Default.TextFields
+            desc.contains("bollettino") -> Icons.Default.Download
+            desc.contains("pergamena") -> Icons.Default.Verified
+            else -> Icons.Default.Description
+        }
     }
     
 }

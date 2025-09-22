@@ -74,6 +74,7 @@ class HomeViewModel @Inject constructor(
         
         // Fallback: usa l'anno corrente come base
         val now = LocalDate.now(ZoneId.of("Europe/Rome"))
+        @Suppress("UNUSED_VARIABLE")
         val academicStart = LocalDate.of(if (now.monthValue >= 9) now.year else now.year - 1, 9, 1)
         
         // Per ora restituiamo un anno di default, in futuro si può calcolare dal profilo
@@ -86,6 +87,10 @@ class HomeViewModel @Inject constructor(
     private fun getCompactCourseName(profile: StudentProfile?): String {
         // Cerca il corso nel profilo (pianoStudi contiene il nome del corso)
         profile?.pianoStudi?.let { piano ->
+            val courseInfo = getCourseDisplayInfo(piano)
+            if (courseInfo.isNotEmpty()) {
+                return courseInfo
+            }
             return normalizeCourse(piano)
         }
         
@@ -144,6 +149,7 @@ class HomeViewModel @Inject constructor(
                 sessionRepository.notifications,
                 sessionRepository.isLoading
             ) { profile, exams, seminars, notifications, isLoading ->
+                @Suppress("UNUSED_PARAMETER")
                 
                 println("🏠 HomeViewModel: Loading data - Profile: ${profile != null}, Exams: ${exams.size}, Seminars: ${seminars.size}, Loading: $isLoading")
                 println("🏠 HomeViewModel: Profile details: ${profile?.displayName} - ${profile?.currentYear} - ${profile?.pianoStudi}")
@@ -158,7 +164,7 @@ class HomeViewModel @Inject constructor(
                 
                 // Check if graduated: either from profile status or thesis completion
                 val thesisCompleted = exams.any { 
-                    it.corso?.contains("TESI", ignoreCase = true) == true && isCompleted(it) 
+                    it.corso.contains("TESI", ignoreCase = true) && isCompleted(it) 
                 }
                 val isGraduated = profile?.status?.lowercase()?.contains("laureat") == true || thesisCompleted
                 
@@ -321,6 +327,7 @@ class HomeViewModel @Inject constructor(
     }
     
     private fun calculateYearProgress(exams: List<Esame>, currentYear: Int?): YearProgress {
+        @Suppress("UNUSED_PARAMETER")
         val year1Exams = exams.filter { !isAttivitaOTesi(it) && it.anno == "1" }
         val year2Exams = exams.filter { !isAttivitaOTesi(it) && it.anno == "2" }
         val year3Exams = exams.filter { !isAttivitaOTesi(it) && it.anno == "3" }
@@ -376,12 +383,15 @@ class HomeViewModel @Inject constructor(
         val ps = pianoStudi.lowercase()
         return when {
             ps.contains("fashion") -> "Fashion Design"
-            ps.contains("interior") || ps.contains("interni") -> "Interior Design"
+            ps.contains("interior") || ps.contains("interni") || ps.contains("architettura") -> "Architettura degli Interni"
             ps.contains("cinema") || ps.contains("audiovisiv") -> "Cinema"
             ps.contains("regia") || ps.contains("videomaking") -> "Regia"
             ps.contains("graphic") || ps.contains("grafica") || ps.contains("multimedia") -> "Graphic Design"
             ps.contains("fotografia") || ps.contains("photo") -> "Fotografia"
             ps.contains("pittura") || ps.contains("painting") -> "Pittura"
+            ps.contains("product") -> "Product Design"
+            ps.contains("communication") -> "Communication Design"
+            ps.contains("web") || ps.contains("digital") -> "Digital Design"
             ps.contains("design") -> "Design"
             else -> ""
         }

@@ -3,7 +3,7 @@ package com.laba.firenze.ui.exams
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -225,7 +225,7 @@ fun ExamDetailScreen(
                                     modifier = Modifier.padding(bottom = 8.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Filled.ArrowForward,
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.padding(end = 12.dp)

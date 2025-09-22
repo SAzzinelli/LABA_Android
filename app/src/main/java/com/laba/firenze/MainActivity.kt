@@ -30,8 +30,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Status bar trasparente
+        // Permette all'app di estendersi sotto la status bar mantenendo i contenuti visibili
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        
+        // Imposta la status bar trasparente per permettere all'app di estendersi sotto
         window.statusBarColor = Color.Transparent.toArgb()
         window.navigationBarColor = Color.Transparent.toArgb()
         
@@ -49,10 +51,20 @@ fun LABAAuthWrapper(
 ) {
     val authState by viewModel.authState.collectAsStateWithLifecycle()
     
-    // Gestione dinamica della status bar basata sul tema
+    // Gestione dinamica del colore del testo della status bar
     val isDarkTheme = isSystemInDarkTheme()
     val view = LocalView.current
     
+    LaunchedEffect(Unit) {
+        val windowInsetsController = WindowInsetsControllerCompat(
+            (view.context as android.app.Activity).window,
+            view
+        )
+        // Testo della status bar bianco in dark mode, nero in light mode
+        windowInsetsController.isAppearanceLightStatusBars = !isDarkTheme
+    }
+    
+    // Aggiorna anche quando cambia il tema
     LaunchedEffect(isDarkTheme) {
         val windowInsetsController = WindowInsetsControllerCompat(
             (view.context as android.app.Activity).window,

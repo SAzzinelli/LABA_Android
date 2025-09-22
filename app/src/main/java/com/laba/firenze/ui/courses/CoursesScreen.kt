@@ -4,6 +4,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -44,16 +48,17 @@ fun CoursesScreen(
             }
         )
         
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Search Bar
+        // Barra di ricerca (identica a Esami)
         OutlinedTextField(
             value = uiState.searchQuery,
             onValueChange = viewModel::updateSearchQuery,
-            label = { Text("Cerca corsi") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            placeholder = { Text("Cerca corsi") },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            singleLine = true,
+            shape = RoundedCornerShape(28.dp), // Forma capsula
             trailingIcon = {
                 if (uiState.searchQuery.isNotEmpty()) {
                     IconButton(onClick = { viewModel.updateSearchQuery("") }) {
@@ -61,41 +66,41 @@ fun CoursesScreen(
                     }
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(
                 onSearch = { keyboardController?.hide() }
             )
         )
         
-        // Year Filter
+        // Year Filter (pillole senza sfondo)
         LazyRow(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(listOf("Tutti", "1° Anno", "2° Anno", "3° Anno")) { year ->
                 FilterChip(
                     onClick = { viewModel.updateYearFilter(year) },
                     label = { Text(year) },
-                    selected = year == uiState.selectedYear
+                    selected = year == uiState.selectedYear,
+                    modifier = Modifier.clip(RoundedCornerShape(20.dp)),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                        containerColor = Color.Transparent
+                    ),
+                    shape = RoundedCornerShape(20.dp)
                 )
             }
         }
         
         // Courses List
         LazyColumn(
-            contentPadding = PaddingValues(bottom = 80.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding(), // Aggiunge padding per la status bar trasparente
+            contentPadding = PaddingValues(bottom = 120.dp), // Aumentato per evitare taglio
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Regular Courses Section
-            item {
-                Text(
-                    text = "Corsi",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = MaterialTheme.typography.titleMedium.fontWeight,
-                    color = LABA_Blue
-                )
-            }
-            
             items(uiState.courses.filter { isRegularCourse(it.corso) }) { course ->
                 CourseCard(
                     course = course,
@@ -105,46 +110,45 @@ fun CoursesScreen(
                 )
             }
             
-            // Workshop/Seminars Section
-            item {
-                Text(
-                    text = "Workshop / Seminari / Tirocinio",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = MaterialTheme.typography.titleMedium.fontWeight,
-                    color = LABA_Blue,
-                    modifier = Modifier.padding(top = 16.dp)
-                )
-            }
+            // Workshop/Seminars Section - NASCOSTO
+            // item {
+            //     Text(
+            //         text = "Workshop / Seminari / Tirocinio",
+            //         style = MaterialTheme.typography.titleMedium,
+            //         fontWeight = MaterialTheme.typography.titleMedium.fontWeight,
+            //         color = LABA_Blue,
+            //         modifier = Modifier.padding(top = 16.dp)
+            //     )
+            // }
             
-            items(uiState.courses.filter { isWorkshopCourse(it.corso) }) { course ->
-                CourseCard(
-                    course = course,
-                    onClick = { 
-                        // TODO: Navigate to course detail
-                    }
-                )
-            }
+            // items(uiState.courses.filter { isWorkshopCourse(it.corso) }) { course ->
+            //     CourseCard(
+            //         course = course,
+            //         onClick = { 
+            //             // TODO: Navigate to course detail
+            //         }
+            //     )
+            // }
             
-            // Thesis Section
-            item {
-                Text(
-                    text = "Tesi Finale",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = MaterialTheme.typography.titleMedium.fontWeight,
-                    color = LABA_Blue,
-                    modifier = Modifier.padding(top = 16.dp)
-                )
-            }
+            // Thesis Section - NASCOSTO
+            // item {
+            //     Text(
+            //         text = "Tesi Finale",
+            //         style = MaterialTheme.typography.titleMedium,
+            //         fontWeight = MaterialTheme.typography.titleMedium.fontWeight,
+            //         color = LABA_Blue,
+            //         modifier = Modifier.padding(top = 16.dp)
+            //     )
+            // }
             
-            items(uiState.courses.filter { isThesisCourse(it.corso) }) { course ->
-                CourseCard(
-                    course = course,
-                    onClick = { 
-                        // TODO: Navigate to course detail
-                    }
-                )
-            }
-        }
+            // items(uiState.courses.filter { isThesisCourse(it.corso) }) { course ->
+            //     CourseCard(
+            //         course = course,
+            //         onClick = { 
+            //             // TODO: Navigate to course detail
+            //         }
+            //     )
+            // }
         }
     }
 }
@@ -154,16 +158,11 @@ private fun CourseCard(
     course: com.laba.firenze.domain.model.Esame,
     onClick: () -> Unit
 ) {
-    ElevatedCard(
+    Card(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
-        elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = 2.dp,
-            pressedElevation = 6.dp,
-            hoveredElevation = 4.dp
-        ),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
         shape = MaterialTheme.shapes.large
     ) {

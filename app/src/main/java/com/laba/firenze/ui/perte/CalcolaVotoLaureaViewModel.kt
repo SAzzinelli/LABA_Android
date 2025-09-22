@@ -42,7 +42,7 @@ class CalcolaVotoLaureaViewModel @Inject constructor(
      */
     private fun suggestedAverageFromApp(exams: List<Esame>): Double? {
         val numericGrades = exams.mapNotNull { exam ->
-            val lowered = exam.corso?.lowercase() ?: ""
+            val lowered = exam.corso.lowercase()
             // Escludi attività e tesi
             if (lowered.contains("attivit") || lowered.contains("tesi")) return@mapNotNull null
             
