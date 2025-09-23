@@ -30,12 +30,6 @@ class ProfileViewModel @Inject constructor(
         }
     }
     
-    fun updateNotificationsEnabled(enabled: Boolean) {
-        _uiState.value = _uiState.value.copy(
-            notificationsEnabled = enabled
-        )
-        // TODO: Save to preferences
-    }
     
     fun refreshData() {
         viewModelScope.launch {
@@ -56,7 +50,6 @@ class ProfileViewModel @Inject constructor(
 
 data class ProfileUiState(
     val userProfile: com.laba.firenze.domain.model.StudentProfile? = null,
-    val notificationsEnabled: Boolean = true,
     val isLoading: Boolean = false,
     val error: String? = null
 )

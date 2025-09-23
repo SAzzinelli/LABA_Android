@@ -5,7 +5,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -53,21 +52,19 @@ fun HomeScreen(
     }
     
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding(), // Aggiunge padding per la status bar trasparente
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 80.dp), // Ridotto per evitare scroll eccessivo
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 36.dp, bottom = 100.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // HERO SECTION
-        item {
-            val heroInfo = viewModel.getHeroInfo()
-            HeroSection(
-                heroInfo = heroInfo,
-                statusPills = uiState.statusPills,
-                isGraduated = uiState.isGraduated
-            )
-        }
+                // HERO SECTION
+                item {
+                    val heroInfo = viewModel.getHeroInfo()
+                    HeroSection(
+                        heroInfo = heroInfo,
+                        statusPills = uiState.statusPills,
+                        isGraduated = uiState.isGraduated
+                    )
+                }
         
         // KPI CARDS
         item {
@@ -150,8 +147,8 @@ private fun HeroSection(
             .background(
                 Brush.linearGradient(
                     colors = listOf(
-                        Color(0xFF0A84FF),
-                        Color(0xFF5AC8FA)
+                        MaterialTheme.colorScheme.primary,
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                     )
                 )
             )
@@ -172,8 +169,8 @@ private fun HeroSection(
         Column(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .padding(26.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
                 text = "Ciao, ${heroInfo.displayName}! 👋",
@@ -271,8 +268,8 @@ private fun KpiCardsSection(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(20.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp)
         ) {
         // Esami sostenuti
         KpiCard(
@@ -378,8 +375,8 @@ private fun YearProgressAndAverageSection(
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
                 text = "Come stai andando?",
@@ -389,7 +386,7 @@ private fun YearProgressAndAverageSection(
             
             // Year progress (1st, 2nd, 3rd year)
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 for (year in 1..3) {
                     YearProgressCard(
@@ -585,8 +582,8 @@ private fun LessonsTodayCard(lessons: List<LessonUi>) {
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -782,8 +779,8 @@ private fun UpcomingExamsCard(count: Int) {
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -823,7 +820,7 @@ private fun PerTeSection(onNavigate: (String) -> Unit) {
     )
     
     Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -847,7 +844,7 @@ private fun PerTeSection(onNavigate: (String) -> Unit) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(20.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {

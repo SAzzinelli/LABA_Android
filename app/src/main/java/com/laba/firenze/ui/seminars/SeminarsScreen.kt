@@ -23,6 +23,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.laba.firenze.domain.model.Seminario
 import com.laba.firenze.ui.theme.LABA_Blue
+import com.laba.firenze.ui.common.prettifyTitle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,7 +77,7 @@ fun SeminarsScreen(
             EmptyState()
         } else {
             LazyColumn(
-                contentPadding = PaddingValues(bottom = 120.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 120.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(uiState.seminars) { seminar ->

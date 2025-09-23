@@ -42,10 +42,11 @@ interface LogosUniApiService {
     suspend fun getDocuments(@Header("Authorization") token: String): Response<LogosDocumentsResponse>
 
     @GET("logosuni.servicesv2/api/Documents/GetDocument")
+    @retrofit2.http.Streaming
     suspend fun getDocumentById(
         @Header("Authorization") token: String,
         @Query("id") allegatoOid: String
-    ): Response<ByteArray>
+    ): Response<okhttp3.ResponseBody>
     
     // MARK: - Thesis (identico a iOS endpoints)
     @GET("logosuni.servicesv2/api/ThesisInfo")

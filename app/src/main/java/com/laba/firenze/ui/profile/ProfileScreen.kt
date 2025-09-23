@@ -3,6 +3,7 @@ package com.laba.firenze.ui.profile
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,12 +32,13 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
     
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(start = 20.dp, end = 20.dp, top = 36.dp, bottom = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
         contentPadding = PaddingValues(bottom = 120.dp)
     ) {
         // Profile Header
@@ -92,16 +94,38 @@ fun ProfileScreen(
             ProfileSection(
                 title = "Preferenze",
                 items = listOf(
-                    ProfileToggleItem(
+                    ProfileMenuActionItem(
                         title = "Notifiche",
                         icon = Icons.Default.Notifications,
-                        isChecked = uiState.notificationsEnabled,
-                        onCheckedChange = viewModel::updateNotificationsEnabled
-                    ),
-                    ProfileMenuActionItem(
-                        title = "Aspetto",
-                        icon = Icons.Default.Palette,
-                        onClick = { /* TODO: Implement appearance settings */ }
+                        onClick = { 
+                            // Apri le impostazioni di sistema per le notifiche
+                            try {
+                                val intent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                    android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                        putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                    }
+                                } else {
+                                    android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = android.net.Uri.fromParts("package", context.packageName, null)
+                                    }
+                                }
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                // Fallback: apri le impostazioni generali
+                                try {
+                                    val fallbackIntent = android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+                                    context.startActivity(fallbackIntent)
+                                } catch (e2: Exception) {
+                                    // Ultimo fallback: impostazioni generali
+                                    try {
+                                        val generalIntent = android.content.Intent(android.provider.Settings.ACTION_SETTINGS)
+                                        context.startActivity(generalIntent)
+                                    } catch (e3: Exception) {
+                                        // Se tutto fallisce, non fare nulla
+                                    }
+                                }
+                            }
+                        }
                     )
                 )
             )
@@ -347,11 +371,13 @@ private fun ProfileHeader(userProfile: com.laba.firenze.domain.model.StudentProf
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
+        ),
+        shape = RoundedCornerShape(22.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -361,7 +387,7 @@ private fun ProfileHeader(userProfile: com.laba.firenze.domain.model.StudentProf
                 Surface(
                     modifier = Modifier.size(60.dp),
                     shape = CircleShape,
-                    color = Color.White.copy(alpha = 0.2f)
+                    color = MaterialTheme.colorScheme.primary
                 ) {
                     Box(
                         contentAlignment = Alignment.Center
@@ -370,7 +396,7 @@ private fun ProfileHeader(userProfile: com.laba.firenze.domain.model.StudentProf
                             imageVector = Icons.Default.Person,
                             contentDescription = "Avatar",
                             modifier = Modifier.size(32.dp),
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                 }
@@ -422,7 +448,7 @@ private fun ProfileHeader(userProfile: com.laba.firenze.domain.model.StudentProf
                 
                 // Pillola numero matricola (grigia)
                 Surface(
-                    color = Color.White.copy(alpha = 0.2f),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Row(
@@ -434,12 +460,12 @@ private fun ProfileHeader(userProfile: com.laba.firenze.domain.model.StudentProf
                             Icons.Filled.Badge,
                             contentDescription = null,
                             modifier = Modifier.size(14.dp),
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
                             text = "Matricola: ${userProfile?.matricola ?: "N/A"}",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -455,7 +481,7 @@ private fun ProfileSection(
     items: List<ProfileMenuItem>
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
             text = title,
@@ -465,7 +491,7 @@ private fun ProfileSection(
         )
         
         Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items.forEach { item ->
                 ProfileMenuItem(item = item)

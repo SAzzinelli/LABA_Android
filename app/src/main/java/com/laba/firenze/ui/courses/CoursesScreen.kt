@@ -54,7 +54,7 @@ fun CoursesScreen(
             onValueChange = viewModel::updateSearchQuery,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             placeholder = { Text("Cerca corsi") },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             singleLine = true,
@@ -74,7 +74,7 @@ fun CoursesScreen(
         
         // Year Filter (pillole senza sfondo)
         LazyRow(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(listOf("Tutti", "1° Anno", "2° Anno", "3° Anno")) { year ->
@@ -95,9 +95,7 @@ fun CoursesScreen(
         
         // Courses List
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding(), // Aggiunge padding per la status bar trasparente
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 120.dp), // Aumentato per evitare taglio
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {

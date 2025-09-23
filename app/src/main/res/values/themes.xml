@@ -1,20 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="Theme.LABAFirenze" parent="android:Theme.Light.NoTitleBar">
+    <style name="Theme.LABAFirenze" parent="android:Theme.Material.Light.NoActionBar">
         <!-- Primary brand color. -->
         <item name="android:colorPrimary">@color/Info_Blue</item>
         <item name="android:colorPrimaryDark">@color/Info_Blue</item>
         <item name="android:colorAccent">@color/Info_Blue</item>
-        <!-- Status bar and navigation bar transparent -->
-        <item name="android:statusBarColor" tools:targetApi="l">@android:color/transparent</item>
-        <item name="android:navigationBarColor" tools:targetApi="l">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
-        <item name="android:windowLightNavigationBar" tools:targetApi="o">true</item>
-        <!-- Splash Screen customization -->
-        <item name="android:windowSplashScreenBackground" tools:targetApi="s">@android:color/white</item>
-        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="s">@drawable/splash_logo</item>
-        <item name="android:windowSplashScreenIconBackgroundColor" tools:targetApi="s">@android:color/white</item>
+        <!-- Status bar icons dark in light mode -->
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <!-- Disable native splash screen -->
+        <item name="android:windowSplashScreenBackground" tools:targetApi="s">@android:color/transparent</item>
+        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="s">@null</item>
+        <item name="android:windowSplashScreenIconBackgroundColor" tools:targetApi="s">@android:color/transparent</item>
         <!-- Customize your theme here. -->
     </style>
 </resources>

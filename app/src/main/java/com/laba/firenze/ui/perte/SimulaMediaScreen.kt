@@ -66,9 +66,8 @@ fun SimulaMediaScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
-                    .statusBarsPadding(), // Aggiunge padding per la status bar trasparente
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 120.dp), // Aumentato per lo scroll
+                    .padding(innerPadding),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 120.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 // Situazione attuale

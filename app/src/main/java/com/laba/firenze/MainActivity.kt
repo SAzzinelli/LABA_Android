@@ -4,10 +4,7 @@ import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
@@ -16,12 +13,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.laba.firenze.ui.LABANavigation
-import com.laba.firenze.ui.common.AppLoadingScreen
+import com.laba.firenze.ui.common.SplashScreen
 import com.laba.firenze.ui.common.LoginScreen
+import com.laba.firenze.ui.common.NotificationPermissionHelper
 import com.laba.firenze.ui.theme.LABAFirenzeTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -38,9 +35,7 @@ class MainActivity : ComponentActivity() {
         window.navigationBarColor = Color.Transparent.toArgb()
         
         setContent {
-            LABAFirenzeTheme {
-                LABAAuthWrapper()
-            }
+            LABAAuthWrapper()
         }
     }
 }
@@ -51,42 +46,32 @@ fun LABAAuthWrapper(
 ) {
     val authState by viewModel.authState.collectAsStateWithLifecycle()
     
-    // Gestione dinamica del colore del testo della status bar
-    val isDarkTheme = isSystemInDarkTheme()
     val view = LocalView.current
     
-    LaunchedEffect(Unit) {
-        val windowInsetsController = WindowInsetsControllerCompat(
-            (view.context as android.app.Activity).window,
-            view
-        )
-        // Testo della status bar bianco in dark mode, nero in light mode
-        windowInsetsController.isAppearanceLightStatusBars = !isDarkTheme
-    }
+    // Nessuna configurazione personalizzata - Android gestisce tutto automaticamente
     
-    // Aggiorna anche quando cambia il tema
-    LaunchedEffect(isDarkTheme) {
-        val windowInsetsController = WindowInsetsControllerCompat(
-            (view.context as android.app.Activity).window,
-            view
-        )
-        windowInsetsController.isAppearanceLightStatusBars = !isDarkTheme
-    }
-    
-    when {
-        authState.isLoading -> {
-            // Show loading screen
-            AppLoadingScreen()
-        }
-        authState.isLoggedIn -> {
-            // Show main app
-            LABANavigation(
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-        else -> {
-            // Show login screen
-            LoginScreen()
+    LABAFirenzeTheme {
+        when {
+            authState.isLoading -> {
+                // Show splash screen
+                SplashScreen()
+            }
+            authState.isLoggedIn -> {
+                // Request notification permission after successful login
+                NotificationPermissionHelper { permissionGranted ->
+                    // Permission granted or denied - we can log this or handle accordingly
+                    // For now, we just proceed with the app
+                }
+                
+                // Show main app
+                LABANavigation(
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            else -> {
+                // Show login screen
+                LoginScreen()
+            }
         }
     }
 }
