@@ -223,31 +223,20 @@ class LogosUniAPIClient @Inject constructor(
     suspend fun getDocumentById(token: String, allegatoOid: String): ByteArray? {
         return withContext(Dispatchers.IO) {
             try {
-                println("📥 LogosUniAPIClient: Downloading document with ID: $allegatoOid")
-                println("📥 LogosUniAPIClient: Token: ${token.take(20)}...")
                 val response = apiService.getDocumentById("Bearer $token", allegatoOid)
-                println("📥 LogosUniAPIClient: Download response code: ${response.code()}")
-                println("📥 LogosUniAPIClient: Download response headers: ${response.headers()}")
-                
                 if (response.isSuccessful) {
                     val responseBody = response.body()
                     if (responseBody != null) {
                         val bytes = responseBody.bytes()
-                        println("📥 LogosUniAPIClient: Successfully downloaded ${bytes.size} bytes")
                         responseBody.close()
                         bytes
                     } else {
-                        println("❌ LogosUniAPIClient: Response body is null")
                         null
                     }
                 } else {
-                    println("❌ LogosUniAPIClient: Download failed - HTTP ${response.code()}: ${response.message()}")
-                    println("❌ LogosUniAPIClient: Error body: ${response.errorBody()?.string()}")
                     null
                 }
             } catch (e: Exception) {
-                println("❌ LogosUniAPIClient: Download exception: ${e.message}")
-                e.printStackTrace()
                 null
             }
         }
@@ -288,37 +277,13 @@ class LogosUniAPIClient @Inject constructor(
     suspend fun getThesisDocuments(token: String): List<ThesisDocumentItem> {
         return withContext(Dispatchers.IO) {
             try {
-                println("🔍 LogosUniAPIClient: Getting thesis documents with token: ${token.take(20)}...")
                 val response = apiService.getThesisDocuments("Bearer $token")
-                println("🔍 LogosUniAPIClient: Thesis documents response code: ${response.code()}")
-                println("🔍 LogosUniAPIClient: Thesis documents response body: ${response.body()}")
-                println("🔍 LogosUniAPIClient: Thesis documents response error: ${response.errorBody()?.string()}")
-                
                 if (response.isSuccessful) {
-                    val responseBody = response.body()
-                    println("🔍 LogosUniAPIClient: Response body type: ${responseBody?.javaClass?.simpleName}")
-                    println("🔍 LogosUniAPIClient: Response body success: ${responseBody?.success}")
-                    println("🔍 LogosUniAPIClient: Response body count: ${responseBody?.count}")
-                    println("🔍 LogosUniAPIClient: Response body payload: ${responseBody?.payload}")
-                    println("🔍 LogosUniAPIClient: Response body payload size: ${responseBody?.payload?.size}")
-                    
-                    // Estrai documenti dal payload
-                    val documents = responseBody?.payload ?: emptyList()
-                    println("🔍 LogosUniAPIClient: Found ${documents.size} thesis documents")
-                    
-                    // Log di ogni documento
-                    documents.forEachIndexed { index, doc ->
-                        println("🔍 LogosUniAPIClient: Document $index: ${doc.descrizione} (${doc.allegatoOid})")
-                    }
-                    
-                    documents
+                    response.body()?.payload ?: emptyList()
                 } else {
-                    println("❌ API Error: HTTP ${response.code()}: ${response.message()}")
                     emptyList()
                 }
             } catch (e: Exception) {
-                println("❌ API Exception: ${e.message}")
-                e.printStackTrace()
                 emptyList()
             }
         }

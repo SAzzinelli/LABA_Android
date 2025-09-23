@@ -410,34 +410,22 @@ class SessionRepository @Inject constructor(
     suspend fun getThesisDocuments(): List<com.laba.firenze.ui.thesis.ThesisDocument> {
         return try {
             val token = tokenManager.accessToken.value
-            println("🔑 SessionRepository: Token for thesis documents: ${token.take(20)}...")
-            println("🔑 SessionRepository: Token length: ${token.length}")
-            
             val documents = apiClient.getThesisDocuments(token)
-            println("📡 SessionRepository: API response: ${documents.size} documents")
             
             if (documents.isEmpty()) {
-                println("⚠️ SessionRepository: API returned empty list - no documents available")
                 return emptyList()
             }
             
-            val result = documents.map { item ->
-                println("📄 SessionRepository: Processing document: ${item.descrizione} (${item.allegatoOid})")
+            documents.map { item ->
                 com.laba.firenze.ui.thesis.ThesisDocument(
                     id = item.allegatoOid,
                     title = prettifyTitle(item.descrizione),
                     type = getDocumentType(item.descrizione),
                     icon = getDocumentIcon(item.descrizione),
-                    url = "logos://document/${item.allegatoOid}" // URL speciale per documenti LOGOS
+                    url = "logos://document/${item.allegatoOid}"
                 )
             }
-            
-            println("✅ SessionRepository: Successfully processed ${result.size} documents")
-            result
         } catch (e: Exception) {
-            println("❌ SessionRepository error: ${e.message}")
-            e.printStackTrace()
-            // In caso di errore, restituisci lista vuota invece di mock
             emptyList()
         }
     }
@@ -446,14 +434,8 @@ class SessionRepository @Inject constructor(
     suspend fun downloadDocument(allegatoOid: String): ByteArray? {
         return try {
             val token = tokenManager.accessToken.value
-            println("📥 SessionRepository: Downloading document with ID: $allegatoOid")
-            println("📥 SessionRepository: Token length: ${token.length}")
-            val result = apiClient.getDocumentById(token, allegatoOid)
-            println("📥 SessionRepository: Download result: ${result?.size ?: 0} bytes")
-            result
+            apiClient.getDocumentById(token, allegatoOid)
         } catch (e: Exception) {
-            println("❌ SessionRepository: Download error: ${e.message}")
-            e.printStackTrace()
             null
         }
     }
