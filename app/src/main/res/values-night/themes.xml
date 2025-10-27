@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Dark theme for the application -->
+    <style name="Theme.LABAFirenze" parent="android:Theme.Material.NoActionBar">
+        <!-- Primary brand color. -->
+        <item name="android:colorPrimary">@color/Info_Blue</item>
+        <item name="android:colorPrimaryDark">@color/Info_Blue</item>
+        <item name="android:colorAccent">@color/Info_Blue</item>
+        <!-- Status bar icons light in dark mode -->
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <!-- Disable native splash screen -->
+        <item name="android:windowSplashScreenBackground" tools:targetApi="s">@android:color/transparent</item>
+        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="s">@null</item>
+        <item name="android:windowSplashScreenIconBackgroundColor" tools:targetApi="s">@android:color/transparent</item>
+    </style>
+</resources>

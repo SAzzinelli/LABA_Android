@@ -72,7 +72,11 @@ data class StudentResponse(
 
 @Parcelize
 data class EnrollmentsPayload(
-    val enrollments: List<Enrollment>
+    val enrollments: List<Enrollment>? = null,
+    val stato: String? = null,         // Come iOS
+    val annoAttuale: Int? = null,       // Come iOS
+    val pianoStudi: String? = null,     // Come iOS
+    val situazioneEsami: List<EsamePayload>? = null  // Come iOS
 ) : Parcelable
 
 @Parcelize

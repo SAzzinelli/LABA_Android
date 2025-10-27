@@ -22,8 +22,10 @@ import com.laba.firenze.R
 import com.laba.firenze.ui.common.AppLoadingScreen
 import com.laba.firenze.ui.common.LoginScreen
 import com.laba.firenze.ui.courses.CoursesScreen
+import com.laba.firenze.ui.courses.CourseDetailScreen
 import com.laba.firenze.ui.documents.ProgrammiScreen
 import com.laba.firenze.ui.documents.DispenseScreen
+import com.laba.firenze.ui.documents.DocumentViewerScreen
 import com.laba.firenze.ui.exams.ExamsScreen
 import com.laba.firenze.ui.exams.ExamDetailScreen
 import com.laba.firenze.ui.home.HomeScreen
@@ -33,6 +35,9 @@ import com.laba.firenze.ui.thesis.ThesisScreen
 import com.laba.firenze.ui.thesis.PergamenaScreen
 import com.laba.firenze.ui.regolamenti.RegolamentiScreen
 import com.laba.firenze.ui.seminars.SeminarsScreen
+import com.laba.firenze.ui.notifications.NotificationSettingsScreen
+import com.laba.firenze.ui.notifications.InboxNotificationsScreen
+import com.laba.firenze.ui.appearance.AppearanceSettingsScreen
 
 sealed class LABANavigation(val route: String, val icon: ImageVector, val title: String) {
     object Home : LABANavigation("home", Icons.Default.Home, "Home")
@@ -135,6 +140,10 @@ fun LABANavigation(
             composable(LABANavigation.Courses.route) {
                 CoursesScreen(navController)
             }
+            composable("course_detail/{courseId}") { backStackEntry ->
+                val courseId = backStackEntry.arguments?.getString("courseId") ?: ""
+                CourseDetailScreen(navController, courseId)
+            }
             composable(LABANavigation.Seminars.route) {
                 SeminarsScreen(navController)
             }
@@ -177,6 +186,26 @@ fun LABANavigation(
             }
             composable("handouts") {
                 DispenseScreen(navController)
+            }
+            composable("document_viewer/{allegatoOid}/{title}") { backStackEntry ->
+                val allegatoOid = backStackEntry.arguments?.getString("allegatoOid") ?: ""
+                val title = backStackEntry.arguments?.getString("title") ?: ""
+                DocumentViewerScreen(navController, allegatoOid, title)
+            }
+            
+            // Notification Settings
+            composable("notifications") {
+                NotificationSettingsScreen(navController)
+            }
+            
+            // Inbox Notifications
+            composable("inbox") {
+                InboxNotificationsScreen(navController)
+            }
+            
+            // Appearance Settings
+            composable("appearance") {
+                AppearanceSettingsScreen(navController)
             }
         }
     }

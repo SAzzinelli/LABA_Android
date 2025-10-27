@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.laba.firenze" />
+                  <option name="mobileSdkAppId" value="1:57721935339:android:26b2b820ebb52cbe0435ae" />
+                  <option name="projectId" value="labaapp-f7b09" />
+                  <option name="projectNumber" value="57721935339" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

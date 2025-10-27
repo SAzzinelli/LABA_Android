@@ -1,5 +1,7 @@
 package com.laba.firenze.ui.courses
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -17,7 +19,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -33,6 +37,7 @@ fun CoursesScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val keyboardController = LocalSoftwareKeyboardController.current
+    val context = LocalContext.current
     
     Column(
         modifier = Modifier
@@ -40,12 +45,7 @@ fun CoursesScreen(
     ) {
         // Top App Bar
         TopAppBar(
-            title = { Text("Corsi") },
-            navigationIcon = {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Indietro")
-                }
-            }
+            title = { Text("Corsi") }
         )
         
         // Barra di ricerca (identica a Esami)
@@ -54,7 +54,7 @@ fun CoursesScreen(
             onValueChange = viewModel::updateSearchQuery,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             placeholder = { Text("Cerca corsi") },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             singleLine = true,
@@ -74,7 +74,7 @@ fun CoursesScreen(
         
         // Year Filter (pillole senza sfondo)
         LazyRow(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(listOf("Tutti", "1° Anno", "2° Anno", "3° Anno")) { year ->
@@ -96,14 +96,14 @@ fun CoursesScreen(
         // Courses List
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 120.dp), // Aumentato per evitare taglio
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 120.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(uiState.courses.filter { isRegularCourse(it.corso) }) { course ->
                 CourseCard(
                     course = course,
                     onClick = { 
-                        // TODO: Navigate to course detail
+                        navController.navigate("course_detail/${course.oid}")
                     }
                 )
             }
@@ -151,6 +151,49 @@ fun CoursesScreen(
     }
 }
 
+/**
+ * Invia email al professore del corso
+ */
+private fun sendEmailToTeacher(context: android.content.Context, course: com.laba.firenze.domain.model.Esame) {
+    val teacherEmail = getTeacherEmail(course.docente)
+    if (teacherEmail != null) {
+        val intent = Intent(Intent.ACTION_SENDTO).apply {
+            data = Uri.parse("mailto:$teacherEmail")
+            putExtra(Intent.EXTRA_SUBJECT, "Richiesta informazioni - ${prettifyTitle(course.corso)}")
+        }
+        
+        if (intent.resolveActivity(context.packageManager) != null) {
+            context.startActivity(intent)
+        } else {
+            // Fallback: copia email negli appunti
+            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            val clip = android.content.ClipData.newPlainText("Email docente", teacherEmail)
+            clipboard.setPrimaryClip(clip)
+            android.widget.Toast.makeText(context, "Email copiata negli appunti", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    } else {
+        android.widget.Toast.makeText(context, "Email del docente non disponibile", android.widget.Toast.LENGTH_SHORT).show()
+    }
+}
+
+/**
+ * Ottiene l'email del docente
+ */
+private fun getTeacherEmail(docente: String?): String? {
+    if (docente.isNullOrBlank()) return null
+    
+    // Logica semplificata per ottenere email docente
+    val emailMap = mapOf(
+        "docente1" to "docente1@laba.biz",
+        "docente2" to "docente2@laba.biz",
+        // Aggiungi altri docenti qui
+    )
+    
+    return emailMap[docente.lowercase()] ?: "${docente.lowercase().replace(" ", ".")}@laba.biz"
+}
+
+
+
 @Composable
 private fun CourseCard(
     course: com.laba.firenze.domain.model.Esame,
@@ -165,8 +208,7 @@ private fun CourseCard(
         shape = MaterialTheme.shapes.large
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(16.dp)
         ) {
             Text(
                 text = prettifyTitle(course.corso),

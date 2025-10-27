@@ -1,9 +1,12 @@
 package com.laba.firenze.ui.home
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.laba.firenze.data.repository.LessonCalendarRepository
 import com.laba.firenze.data.repository.SessionRepository
 import com.laba.firenze.domain.model.Esame
+import com.laba.firenze.domain.model.LessonEvent
 import com.laba.firenze.domain.model.StudentProfile
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +22,9 @@ import java.time.LocalDate
 import java.time.Month
 import java.time.Year
 import java.time.ZoneId
+import java.util.Date
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 data class HeroInfo(
     val displayName: String,
@@ -29,13 +35,16 @@ data class HeroInfo(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val sessionRepository: SessionRepository
+    private val sessionRepository: SessionRepository,
+    private val lessonCalendarRepository: LessonCalendarRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
     
     init {
+        // Load lessons cache
+        lessonCalendarRepository.loadCacheIfAvailable()
         loadData()
     }
     
@@ -43,6 +52,8 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             // Carica tutti i dati e aspetta il completamento
             sessionRepository.loadAll()
+            // Sync lessons
+            lessonCalendarRepository.syncFromURL(force = true)
             // Forza il refresh dei dati
             loadData()
         }
@@ -59,26 +70,42 @@ class HomeViewModel @Inject constructor(
         val now = LocalDate.now(clock)
         val y = now.year
         val startMonth = Month.SEPTEMBER.value // 9
-        return if (now.monthValue >= startMonth) "${y}/${(y + 1).toString().takeLast(2)}"
-               else "${y - 1}/${y.toString().takeLast(2)}"
+        // iOS usa solo le ultime 2 cifre per l'anno accademico (es. 23/24 invece di 2023/2024)
+        val currentYearLast2 = y.toString().takeLast(2)
+        val nextYearLast2 = (y + 1).toString().takeLast(2)
+        val prevYearLast2 = (y - 1).toString().takeLast(2)
+        
+        val academicYear = if (now.monthValue >= startMonth) "$currentYearLast2/$nextYearLast2"
+               else "$prevYearLast2/$currentYearLast2"
+        return "A.A. $academicYear"
     }
     
     /**
      * Stima l'anno di corso basato sui dati disponibili
      */
     private fun estimateStudyYear(profile: StudentProfile?): Int? {
+        Log.d("HomeViewModel", "estimateStudyYear - profile.currentYear: '${profile?.currentYear}'")
+        
         // Cerca l'anno nel profilo
         profile?.currentYear?.let { anno ->
-            return anno.toIntOrNull()
+            val yearInt = anno.toIntOrNull()
+            Log.d("HomeViewModel", "Parsed currentYear to int: $yearInt")
+            // Accetta anche anni > 3 per fuoricorso (come iOS)
+            if (yearInt != null && yearInt >= 1) {
+                return yearInt
+            }
         }
         
-        // Fallback: usa l'anno corrente come base
-        val now = LocalDate.now(ZoneId.of("Europe/Rome"))
-        @Suppress("UNUSED_VARIABLE")
-        val academicStart = LocalDate.of(if (now.monthValue >= 9) now.year else now.year - 1, 9, 1)
+        // Se non abbiamo l'anno dal backend, prova a dedurlo dall'anno accademico
+        profile?.pianoStudi?.let { pianoStudi ->
+            val academicYear = extractAcademicYearFromPianoStudi(pianoStudi)
+            Log.d("HomeViewModel", "Could not get year from backend, but got academic year: $academicYear")
+            // Potremmo provare a dedurre l'anno dall'anno accademico
+            // ma per ora ritorniamo null se non abbiamo l'info
+        }
         
-        // Per ora restituiamo un anno di default, in futuro si può calcolare dal profilo
-        return 2 // Default al 2º anno
+        Log.d("HomeViewModel", "No currentYear found in profile, returning null")
+        return null
     }
     
     /**
@@ -128,9 +155,22 @@ class HomeViewModel @Inject constructor(
      */
     fun getHeroInfo(): HeroInfo {
         val profile = sessionRepository.getUserProfileFlow().value
-        val academicYear = currentAcademicYearString()
+        
+        Log.d("HomeViewModel", "=== getHeroInfo ===")
+        Log.d("HomeViewModel", "Profile: ${profile != null}")
+        Log.d("HomeViewModel", "Profile displayName: ${profile?.displayName}")
+        Log.d("HomeViewModel", "Profile currentYear: '${profile?.currentYear}'")
+        Log.d("HomeViewModel", "Profile pianoStudi: '${profile?.pianoStudi}'")
+        Log.d("HomeViewModel", "Profile status: '${profile?.status}'")
+        
+        val academicYear = extractAcademicYearFromPianoStudi(profile?.pianoStudi)
         val courseName = getCompactCourseName(profile)
         val studyYear = estimateStudyYear(profile)
+        
+        Log.d("HomeViewModel", "=== RESULT ===")
+        Log.d("HomeViewModel", "Final academicYear: '$academicYear'")
+        Log.d("HomeViewModel", "Final courseName: '$courseName'")
+        Log.d("HomeViewModel", "Final studyYear: $studyYear")
         
         return HeroInfo(
             displayName = profile?.nome ?: "Studente", // Solo nome, no cognome
@@ -138,6 +178,54 @@ class HomeViewModel @Inject constructor(
             courseName = courseName,
             studyYear = studyYear
         )
+    }
+    
+    /**
+     * Estrae l'anno accademico dal piano studi (ESATTAMENTE come iOS)
+     * Implementazione basata su courseDisplayInfo in ContentView.swift righe 395-425
+     * Esempio: "Graphic Design A.A. 23/24" -> "A.A. 23/24"
+     */
+    private fun extractAcademicYearFromPianoStudi(pianoStudi: String?): String {
+        Log.d("HomeViewModel", "extractAcademicYearFromPianoStudi - pianoStudi: '$pianoStudi'")
+        
+        if (pianoStudi.isNullOrEmpty()) {
+            Log.d("HomeViewModel", "pianoStudi is null/empty, using fallback")
+            return currentAcademicYearString() // Fallback: calcola da data corrente
+        }
+        
+        // iOS divide la stringa usando "A.A." come separatore
+        val upper = pianoStudi.uppercase()
+        val parts = upper.split("A.A.")
+        
+        if (parts.size <= 1) {
+            Log.d("HomeViewModel", "No A.A. found in pianoStudi, using fallback")
+            return currentAcademicYearString()
+        }
+        
+        // Se ci sono più "A.A.", prendi l'ultimo (es. "Graphic Design A.A. 2020/2023 A.A. 2023/2024" -> "2023/2024")
+        val yearsRaw = parts.last()
+        Log.d("HomeViewModel", "yearsRaw after split (last part): '$yearsRaw'")
+        
+        // Estrai tutti i numeri separati da caratteri non-numerici
+        // Esempio: "2020/2023 2023/2024" -> ["2020", "2023", "2023", "2024"]
+        val allNumbers = yearsRaw.split(Regex("[^0-9]+")).filter { it.isNotEmpty() }
+        Log.d("HomeViewModel", "All numbers: $allNumbers")
+        
+        if (allNumbers.size >= 2) {
+            // Prendi gli ULTIMI 2 numeri (gli anni accademici più recenti)
+            val lastTwo = allNumbers.takeLast(2)
+            Log.d("HomeViewModel", "Last two numbers: $lastTwo")
+            
+            val start = lastTwo[0].takeLast(2)  // Ultime 2 cifre del primo anno
+            val end = lastTwo[1].takeLast(2)    // Ultime 2 cifre del secondo anno
+            val result = "A.A. $start/$end"
+            Log.d("HomeViewModel", "Found A.A. in pianoStudi: $result")
+            return result
+        }
+        
+        Log.d("HomeViewModel", "Not enough numbers in pianoStudi: '$yearsRaw', using fallback")
+        // Fallback: calcola da data corrente
+        return currentAcademicYearString()
     }
     
     private fun loadData() {
@@ -151,13 +239,13 @@ class HomeViewModel @Inject constructor(
             ) { profile, exams, seminars, notifications, isLoading ->
                 @Suppress("UNUSED_PARAMETER")
                 
-                println("🏠 HomeViewModel: Loading data - Profile: ${profile != null}, Exams: ${exams.size}, Seminars: ${seminars.size}, Loading: $isLoading")
-                println("🏠 HomeViewModel: Profile details: ${profile?.displayName} - ${profile?.currentYear} - ${profile?.pianoStudi}")
+                Log.d("HomeViewModel", "Loading data - Profile: ${profile != null}, Exams: ${exams.size}, Seminars: ${seminars.size}, Loading: $isLoading")
+                Log.d("HomeViewModel", "Profile details: ${profile?.displayName} - ${profile?.currentYear} - ${profile?.pianoStudi}")
                 exams.take(3).forEachIndexed { index, exam ->
-                    println("🏠 HomeViewModel: Exam $index: ${exam.corso} - ${exam.voto} - ${exam.anno}")
+                    Log.d("HomeViewModel", "Exam $index: ${exam.corso} - ${exam.voto} - ${exam.anno}")
                 }
                 seminars.take(3).forEachIndexed { index, seminar ->
-                    println("🏠 HomeViewModel: Seminar $index: ${seminar.titolo} - ${seminar.esito}")
+                    Log.d("HomeViewModel", "Seminar $index: ${seminar.titolo} - ${seminar.esito}")
                 }
                 
                 val displayName = profile?.nome ?: "Studente"
@@ -168,7 +256,7 @@ class HomeViewModel @Inject constructor(
                 }
                 val isGraduated = profile?.status?.lowercase()?.contains("laureat") == true || thesisCompleted
                 
-                println("🏠 HomeViewModel: Graduation check - Profile status: '${profile?.status}', Thesis completed: $thesisCompleted, IsGraduated: $isGraduated")
+                Log.d("HomeViewModel", "Graduation check - Profile status: '${profile?.status}', Thesis completed: $thesisCompleted, IsGraduated: $isGraduated")
                 
                 // Status pills logic
                 val statusPills = mutableListOf<String>()
@@ -207,13 +295,13 @@ class HomeViewModel @Inject constructor(
                 // Career average calculation
                 val careerAverage = calculateCareerAverage(exams)
                 
-                // Lezioni reali (vuote per ora, da implementare con API reali)
-                val lessonsToday = emptyList<LessonUi>()
+                // Lezioni reali - filtra per l'utente
+                val lessonsToday = getTodaysLessonsForUser(profile, exams)
                 
                 // Esami in arrivo (calcolo basato su esami non sostenuti)
                 val upcomingExamsCount = validExams.count { it.voto?.isEmpty() ?: true }
                 
-                println("🏠 HomeViewModel: Calculated - Passed: $passedExamsCount, Missing: $missingExamsCount, CFA: $cfaEarned, Average: $careerAverage")
+                Log.d("HomeViewModel", "Calculated - Passed: $passedExamsCount, Missing: $missingExamsCount, CFA: $cfaEarned, Average: $careerAverage")
                 
                 _uiState.value = HomeUiState(
                     displayName = displayName,
@@ -262,43 +350,43 @@ class HomeViewModel @Inject constructor(
      * Identico a iOS: vm.esami.reduce(0) { $0 + (Int($1.cfa ?? "") ?? 0) }
      */
     private fun calculateCfaTarget(exams: List<Esame>): Int {
-        println("🏠 HomeViewModel: Calculating CFA target from ${exams.size} exams")
+        Log.d("HomeViewModel", "Calculating CFA target from ${exams.size} exams")
         
         // Somma TUTTI gli esami (inclusi workshop, tesi, attività)
         val totalCFA = exams.sumOf { exam ->
             val cfaValue = exam.cfa?.toIntOrNull() ?: 0
-            println("🏠 HomeViewModel: Exam '${exam.corso}' - CFA: '${exam.cfa}' -> $cfaValue")
+            Log.d("HomeViewModel", "Exam '${exam.corso}' - CFA: '${exam.cfa}' -> $cfaValue")
             cfaValue
         }
         
-        println("🏠 HomeViewModel: Total CFA target calculated: $totalCFA")
+        Log.d("HomeViewModel", "Total CFA target calculated: $totalCFA")
         return totalCFA
     }
     
     private fun calculateCfaEarned(exams: List<Esame>, isGraduated: Boolean): Int {
-        println("🏠 HomeViewModel: Calculating CFA from ${exams.size} exams")
+        Log.d("HomeViewModel", "Calculating CFA from ${exams.size} exams")
         
         // Debug: stampa tutti gli esami con i loro CFA
         exams.forEach { exam ->
-            println("🏠 HomeViewModel: Exam '${exam.corso}' - CFA: '${exam.cfa}', Voto: '${exam.voto}', Anno: '${exam.anno}'")
+            Log.d("HomeViewModel", "Exam '${exam.corso}' - CFA: '${exam.cfa}', Voto: '${exam.voto}', Anno: '${exam.anno}'")
         }
         
         // 1) Esami (escludi Attività e Tesi)
         val validExams = exams.filter { !isAttivitaIntegrativa(it) && !isTesiFinale(it) }
         val completedExams = validExams.filter { isCompleted(it) }
-        println("🏠 HomeViewModel: Valid exams: ${validExams.size}, Completed: ${completedExams.size}")
+        Log.d("HomeViewModel", "Valid exams: ${validExams.size}, Completed: ${completedExams.size}")
         
         val examsEarned = completedExams.sumOf { exam ->
             val cfaValue = exam.cfa?.toIntOrNull() ?: 0
-            println("🏠 HomeViewModel: Completed Exam '${exam.corso}' - CFA: '${exam.cfa}' -> $cfaValue")
+            Log.d("HomeViewModel", "Completed Exam '${exam.corso}' - CFA: '${exam.cfa}' -> $cfaValue")
             cfaValue
         }
         
         // 2) Attività integrative (max 10 CFA totali)
         val attivita = exams.filter { isAttivitaIntegrativa(it) }
-        println("🏠 HomeViewModel: Attività integrative trovate: ${attivita.size}")
+        Log.d("HomeViewModel", "Attività integrative trovate: ${attivita.size}")
         attivita.forEach { exam ->
-            println("🏠 HomeViewModel: Attività '${exam.corso}' - CFA: '${exam.cfa}', Completata: ${isCompleted(exam)}")
+            Log.d("HomeViewModel", "Attività '${exam.corso}' - CFA: '${exam.cfa}', Completata: ${isCompleted(exam)}")
         }
         val declaredActivitiesCFA = attivita.sumOf { it.cfa?.toIntOrNull() ?: 0 }
         val anyActivityCompleted = attivita.any { isCompleted(it) }
@@ -307,21 +395,21 @@ class HomeViewModel @Inject constructor(
             anyActivityCompleted -> min(10, declaredActivitiesCFA)
             else -> 0
         }
-        println("🏠 HomeViewModel: Attività CFA - Dichiarati: $declaredActivitiesCFA, Completate: $anyActivityCompleted, Acquisiti: $activitiesEarned")
+        Log.d("HomeViewModel", "Attività CFA - Dichiarati: $declaredActivitiesCFA, Completate: $anyActivityCompleted, Acquisiti: $activitiesEarned")
         
         // 3) Tesi finale
         val thesis = exams.filter { isTesiFinale(it) }
-        println("🏠 HomeViewModel: Tesi trovate: ${thesis.size}")
+        Log.d("HomeViewModel", "Tesi trovate: ${thesis.size}")
         thesis.forEach { exam ->
-            println("🏠 HomeViewModel: Tesi '${exam.corso}' - CFA: '${exam.cfa}', Completata: ${isCompleted(exam)}")
+            Log.d("HomeViewModel", "Tesi '${exam.corso}' - CFA: '${exam.cfa}', Completata: ${isCompleted(exam)}")
         }
         val thesisCFA = thesis.firstOrNull()?.cfa?.toIntOrNull() ?: 0
         val thesisCompleted = thesis.any { isCompleted(it) }
         val thesisEarned = if (isGraduated || thesisCompleted) thesisCFA else 0
-        println("🏠 HomeViewModel: Tesi CFA - Dichiarati: $thesisCFA, Completata: $thesisCompleted, Acquisiti: $thesisEarned")
+        Log.d("HomeViewModel", "Tesi CFA - Dichiarati: $thesisCFA, Completata: $thesisCompleted, Acquisiti: $thesisEarned")
         
         val totalCFA = examsEarned + activitiesEarned + thesisEarned
-        println("🏠 HomeViewModel: CFA calculation - Exams: $examsEarned, Activities: $activitiesEarned, Thesis: $thesisEarned, Total: $totalCFA")
+        Log.d("HomeViewModel", "CFA calculation - Exams: $examsEarned, Activities: $activitiesEarned, Thesis: $thesisEarned, Total: $totalCFA")
         
         return totalCFA
     }
@@ -336,10 +424,21 @@ class HomeViewModel @Inject constructor(
         val year2Progress = calculateYearProgressForExams(year2Exams)
         val year3Progress = calculateYearProgressForExams(year3Exams)
         
+        // Calculate missing exams for each year
+        val year1Missing = year1Exams.count { it.voto?.isEmpty() ?: true }
+        val year2Missing = year2Exams.count { it.voto?.isEmpty() ?: true }
+        val year3Missing = year3Exams.count { it.voto?.isEmpty() ?: true }
+        
         return YearProgress(
             year1 = year1Progress,
+            year1Total = year1Exams.size,
+            year1Missing = year1Missing,
             year2 = year2Progress,
-            year3 = year3Progress
+            year2Total = year2Exams.size,
+            year2Missing = year2Missing,
+            year3 = year3Progress,
+            year3Total = year3Exams.size,
+            year3Missing = year3Missing
         )
     }
     
@@ -351,12 +450,22 @@ class HomeViewModel @Inject constructor(
     }
     
     private fun calculateCareerAverage(exams: List<Esame>): Double? {
-        val numericExams = exams.filter { !isAttivitaOTesi(it) && hasNumericVote(it) }
-        val marks = numericExams.mapNotNull { exam ->
-            val rawVote = exam.voto?.replace(" e lode", "") ?: ""
-            val numericPart = rawVote.split("/").firstOrNull()?.trim()?.toIntOrNull()
-            numericPart
-        }
+        // EXACT SAME LOGIC as GradeTrendViewModel.processExams (righe 52-75)
+        val filteredExams = exams
+            .filter { exam ->
+                // Escludi tesi & affini + attività integrative
+                val titleNorm = exam.corso.lowercase()
+                !titleNorm.contains("tesi") && 
+                !titleNorm.contains("prova finale") && 
+                !titleNorm.contains("elaborato finale") && 
+                !titleNorm.contains("attivit")
+            }
+            .filter { exam ->
+                // Solo voti numerici validi (stesso check di GradeTrendViewModel)
+                exam.data != null && parseVote(exam.voto) != null
+            }
+        
+        val marks = filteredExams.mapNotNull { parseVote(it.voto) }
         
         return if (marks.isNotEmpty()) {
             marks.sum().toDouble() / marks.size
@@ -365,9 +474,42 @@ class HomeViewModel @Inject constructor(
         }
     }
     
-    private fun hasNumericVote(exam: Esame): Boolean {
-        val vote = exam.voto ?: ""
-        return vote.matches(Regex("""^\s*\d+\s*/\s*\d+"""))
+    /**
+     * Stessa funzione di GradeTrendViewModel.parseVote (righe 126-158)
+     * Gestisce: idoneo, lode, 18/30, ecc.
+     */
+    private fun parseVote(voto: String?): Int? {
+        val vote = voto?.lowercase() ?: return null
+        
+        if (vote.contains("idoneo") || vote.contains("idonea") || vote.contains("idoneità")) {
+            return null
+        }
+        
+        if (vote.contains("lode")) {
+            return 30
+        }
+        
+        val digits = vote.filter { it.isDigit() }
+        if (digits.isNotEmpty()) {
+            val number = digits.toIntOrNull()
+            if (number != null && number in 18..30) {
+                return number
+            }
+        }
+        
+        // Try to parse "18/30" format
+        val parts = vote.split("/")
+        if (parts.size >= 2) {
+            val firstPart = parts[0].filter { it.isDigit() }
+            if (firstPart.isNotEmpty()) {
+                val number = firstPart.toIntOrNull()
+                if (number != null && number in 18..30) {
+                    return number
+                }
+            }
+        }
+        
+        return null
     }
     
     private fun getItalianOrdinalYear(year: Int): String {
@@ -394,6 +536,88 @@ class HomeViewModel @Inject constructor(
             ps.contains("web") || ps.contains("digital") -> "Digital Design"
             ps.contains("design") -> "Design"
             else -> ""
+        }
+    }
+    
+    // MARK: - Lessons Filtering
+    
+    /**
+     * Ottiene le lezioni di oggi e domani filtrate per l'utente
+     */
+    private fun getTodaysLessonsForUser(profile: StudentProfile?, exams: List<Esame>): List<LessonUi> {
+        val allEvents = lessonCalendarRepository.events.value
+        val calendar = java.util.Calendar.getInstance()
+        val now = Date()
+        
+        // Filtra lezioni di oggi e domani
+        val todayStart = calendar.time
+        calendar.add(java.util.Calendar.DAY_OF_MONTH, 2)
+        val tomorrowEnd = calendar.time
+        
+        val relevantLessons = allEvents.filter { event ->
+            event.start >= todayStart && event.start < tomorrowEnd
+        }
+        
+        // Filtra per corsi dell'utente
+        val userCourseIds = exams.mapNotNull { exam ->
+            // Estrai oidCorso dagli esami (uguale a iOS)
+            getCourseIdFromExam(exam)
+        }.toSet()
+        
+        val userLessons = relevantLessons.filter { event ->
+            // Match per oidCorso singolo
+            event.oidCorso?.lowercase()?.let { oid ->
+                userCourseIds.contains(oid)
+            } ?: false || 
+            // Match per oidCorsi multipli
+            event.oidCorsi?.any { oid ->
+                userCourseIds.contains(oid.lowercase())
+            } == true ||
+            // Match per nome corso normalizzato
+            normalizeCourse(event.corso).let { normalized ->
+                userCourseIds.any { it.contains(normalized.lowercase()) || normalized.lowercase().contains(it) }
+            }
+        }
+        
+        // Converti in LessonUi
+        return userLessons.map { event ->
+            LessonUi(
+                title = event.corso,
+                time = formatTimeRange(event.start, event.end),
+                room = event.aula,
+                teacher = event.docente,
+                date = formatDate(event.start)
+            )
+        }
+    }
+    
+    private fun getCourseIdFromExam(exam: Esame): String? {
+        // Prova a trovare oidCorso tramite reflection (come in iOS)
+        return exam.corso.lowercase().filter { it.isLetterOrDigit() }
+    }
+    
+    private fun formatTimeRange(start: Date, end: Date): String {
+        val timeFormat = SimpleDateFormat("HH:mm", Locale.ITALIAN)
+        return "${timeFormat.format(start)} - ${timeFormat.format(end)}"
+    }
+    
+    private fun formatDate(date: Date): String {
+        val calendar = java.util.Calendar.getInstance()
+        val today = java.util.Calendar.getInstance()
+        
+        calendar.time = date
+        
+        return when {
+            calendar.get(java.util.Calendar.YEAR) == today.get(java.util.Calendar.YEAR) &&
+            calendar.get(java.util.Calendar.DAY_OF_YEAR) == today.get(java.util.Calendar.DAY_OF_YEAR) -> "Oggi"
+            
+            calendar.get(java.util.Calendar.YEAR) == today.get(java.util.Calendar.YEAR) &&
+            calendar.get(java.util.Calendar.DAY_OF_YEAR) == today.get(java.util.Calendar.DAY_OF_YEAR) + 1 -> "Domani"
+            
+            else -> {
+                val dateFormat = SimpleDateFormat("EEEE dd MMMM", Locale.ITALIAN)
+                dateFormat.format(date)
+            }
         }
     }
 }

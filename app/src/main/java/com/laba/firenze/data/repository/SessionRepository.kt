@@ -1,5 +1,6 @@
 package com.laba.firenze.data.repository
 
+import android.util.Log
 import com.laba.firenze.data.api.AuthApi
 import com.laba.firenze.data.api.LogosUniAPIClient
 import com.laba.firenze.data.local.BackoffManager
@@ -7,6 +8,7 @@ import com.laba.firenze.data.local.JwtDecoder
 import com.laba.firenze.data.local.KeychainHelper
 import com.laba.firenze.data.local.SessionTokenManager
 import com.laba.firenze.data.local.TokenStore
+import com.laba.firenze.data.TopicManager
 import com.laba.firenze.domain.model.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -25,7 +27,8 @@ class SessionRepository @Inject constructor(
     private val authApi: AuthApi,
     private val tokenStore: TokenStore,
     private val jwtDecoder: JwtDecoder,
-    private val backoffManager: BackoffManager
+    private val backoffManager: BackoffManager,
+    private val topicManager: TopicManager
 ) {
     
     // State flows per i dati
@@ -59,7 +62,7 @@ class SessionRepository @Inject constructor(
             // Normalizza username (aggiungi @labafirenze.com se manca)
             val normalizedUsername = if (username.contains("@")) username else "$username@labafirenze.com"
             
-            println("🔐 SessionRepository: Attempting login for user: $normalizedUsername")
+            Log.d("SessionRepository", "Attempting login for user: $normalizedUsername")
             
             val basicAuth = getBasicAuth()
             val response = authApi.login(
@@ -68,8 +71,8 @@ class SessionRepository @Inject constructor(
                 password = password
             )
             
-            println("🔐 SessionRepository: Login response code: ${response.code()}")
-            println("🔐 SessionRepository: Login response body: ${response.body()}")
+            Log.d("SessionRepository", "Login response code: ${response.code()}")
+            Log.d("SessionRepository", "Login response body: ${response.body()}")
             
             if (response.isSuccessful) {
                 val tokenResponse = response.body()
@@ -103,13 +106,13 @@ class SessionRepository @Inject constructor(
                 }
             } else {
                 val errorBody = response.errorBody()?.string() ?: "Errore sconosciuto"
-                println("🔐 SessionRepository: Login failed - $errorBody")
+                Log.d("SessionRepository", "Login failed - $errorBody")
                 _error.value = "Credenziali non valide"
                 _isLoading.value = false
                 false
             }
         } catch (e: Exception) {
-            println("🔐 SessionRepository: Login exception: ${e.message}")
+            Log.d("SessionRepository", "Login exception: ${e.message}")
             _error.value = e.message ?: "Errore di login"
             _isLoading.value = false
             false
@@ -134,7 +137,7 @@ class SessionRepository @Inject constructor(
     suspend fun restoreSessionStrong(force: Boolean = false): Boolean {
         // 1. Anti-concorrenza: se un restore è già in corso → return
         if (restoreInFlight) {
-            println("🔐 SessionRepository: Restore already in flight, skipping")
+            Log.d("SessionRepository", "Restore already in flight, skipping")
             return false
         }
         
@@ -145,21 +148,21 @@ class SessionRepository @Inject constructor(
             if (currentToken.isNotEmpty()) {
                 val remaining = jwtDecoder.getTokenSecondsRemaining(currentToken)
                 if (!force && remaining != null && remaining > 30) {
-                    println("🔐 SessionRepository: Token still valid for $remaining seconds, skipping restore")
+                    Log.d("SessionRepository", "Token still valid for $remaining seconds, skipping restore")
                     return true
                 }
             }
             
             // 3. Backoff: se esiste backoffUntil nel futuro e non forzato → salta
             if (!force && backoffManager.isInBackoff()) {
-                println("🔐 SessionRepository: In backoff, skipping restore")
+                Log.d("SessionRepository", "In backoff, skipping restore")
                 return false
             }
             
             // 4. Lettura credenziali
             val credentials = keychainHelper.fetchKeychainCredentials()
             if (credentials == null) {
-                println("🔐 SessionRepository: No credentials found, need login UI")
+                Log.d("SessionRepository", "No credentials found, need login UI")
                 return false
             }
             
@@ -179,7 +182,7 @@ class SessionRepository @Inject constructor(
      */
     private suspend fun passwordLogin(username: String, password: String): Boolean {
         return try {
-            println("🔐 SessionRepository: Attempting silent login for $username")
+            Log.d("SessionRepository", "Attempting silent login for $username")
             
             val response = authApi.login(
                 basicAuth = getBasicAuth(),
@@ -201,17 +204,17 @@ class SessionRepository @Inject constructor(
                 // Reset backoff dopo successo
                 backoffManager.resetBackoff()
                 
-                println("🔐 SessionRepository: Silent login successful")
+                Log.d("SessionRepository", "Silent login successful")
                 return true
                 
             } else {
                 val errorBody = response.errorBody()?.string()
-                println("🔐 SessionRepository: Silent login failed: ${response.code()} - $errorBody")
+                Log.d("SessionRepository", "Silent login failed: ${response.code()} - $errorBody")
                 
                 // Gestione errori (identico a iOS)
                 if (errorBody?.contains("invalid_client", ignoreCase = true) == true) {
                     // Errore di configurazione del client → mostra subito Login UI
-                    println("🔐 SessionRepository: Invalid client error, clearing token")
+                    Log.d("SessionRepository", "Invalid client error, clearing token")
                     tokenStore.clearTokens()
                     return false
                 } else {
@@ -222,7 +225,7 @@ class SessionRepository @Inject constructor(
             }
             
         } catch (e: Exception) {
-            println("🔐 SessionRepository: Silent login exception: ${e.message}")
+            Log.d("SessionRepository", "Silent login exception: ${e.message}")
             backoffManager.bumpBackoff()
             return false
         }
@@ -244,33 +247,47 @@ class SessionRepository @Inject constructor(
         _seminars.value = emptyList()
         _notifications.value = emptyList()
         
-        println("🔐 SessionRepository: Logout completed")
+        Log.d("SessionRepository", "Logout completed")
     }
     
     // MARK: - Data Loading
     
     suspend fun loadAll() {
-        loadUserProfile()
-        loadExams()
-        loadSeminars()
-        loadNotifications()
+        _isLoading.value = true
+        try {
+            loadUserProfile()
+            loadExams()
+            loadSeminars()
+            loadNotifications()
+        } finally {
+            _isLoading.value = false
+        }
     }
     
     private suspend fun loadUserProfile() {
         try {
             val token = tokenStore.getCurrentAccessToken()
             if (token.isEmpty()) {
-                println("🔐 SessionRepository: No access token available for user profile")
+                Log.d("SessionRepository", "No access token available for user profile")
                 return
             }
             
-            println("🔐 SessionRepository: Loading user profile with token: ${token.take(20)}...")
+            Log.d("SessionRepository", "Loading user profile with token: ${token.take(20)}...")
             
             val studentPayload = apiClient.getStudentProfile(token)
-            println("🔐 SessionRepository: Student payload received: ${studentPayload != null}")
+            Log.d("SessionRepository", "Student payload received: ${studentPayload != null}")
             
             if (studentPayload != null) {
-                println("🔐 SessionRepository: Student data - Nome: ${studentPayload.nome}, Cognome: ${studentPayload.cognome}")
+                Log.d("SessionRepository", "=== STUDENT PAYLOAD DETAILS ===")
+                Log.d("SessionRepository", "Nome: ${studentPayload.nome}")
+                Log.d("SessionRepository", "Cognome: ${studentPayload.cognome}")
+                Log.d("SessionRepository", "annoAttuale: ${studentPayload.annoAttuale}")
+                Log.d("SessionRepository", "pianoStudi: '${studentPayload.pianoStudi}'")
+                Log.d("SessionRepository", "stato: '${studentPayload.stato}'")
+                Log.d("SessionRepository", "dataStato: '${studentPayload.dataStato}'")
+                Log.d("SessionRepository", "classeLaurea: '${studentPayload.classeLaurea}'")
+                Log.d("SessionRepository", "NumMatricola: '${studentPayload.numMatricola}'")
+                Log.d("SessionRepository", "=================================")
                 
                 // Update profile
                 val profile = StudentProfile(
@@ -291,13 +308,39 @@ class SessionRepository @Inject constructor(
                 )
                 
                 tokenManager.saveUserProfile(profile)
-                println("🔐 SessionRepository: User profile saved successfully: ${profile.displayName}")
+                Log.d("SessionRepository", "User profile saved successfully: ${profile.displayName}")
+                
+                // Update FCM topics based on user data
+                updateFCMTopics(profile)
             } else {
-                println("🔐 SessionRepository: Student payload is null")
+                Log.d("SessionRepository", "Student payload is null")
             }
         } catch (e: Exception) {
-            println("🔐 SessionRepository: Error loading user profile: ${e.message}")
+            Log.d("SessionRepository", "Error loading user profile: ${e.message}")
             e.printStackTrace()
+        }
+    }
+    
+    /**
+     * Update FCM topics based on user profile
+     */
+    private fun updateFCMTopics(profile: StudentProfile) {
+        try {
+            val isGraduated = profile.status?.lowercase()?.contains("laureat") == true
+            val currentYear = profile.currentYear?.toIntOrNull()
+            val pianoStudi = profile.pianoStudi
+            
+            Log.d("SessionRepository", "🔔 Updating FCM topics - Year: $currentYear, Course: $pianoStudi, Graduated: $isGraduated")
+            
+            topicManager.updateTopics(
+                scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default),
+                course = pianoStudi,
+                currentYear = currentYear,
+                isGraduated = isGraduated,
+                isDocente = false
+            )
+        } catch (e: Exception) {
+            Log.d("SessionRepository", "🔔 Error updating FCM topics: ${e.message}")
         }
     }
     
@@ -305,26 +348,69 @@ class SessionRepository @Inject constructor(
         try {
             val token = tokenStore.getCurrentAccessToken()
             if (token.isEmpty()) {
-                println("🔐 SessionRepository: No access token available for exams")
+                Log.d("SessionRepository", "No access token available for exams")
                 return
             }
             
-            println("🔐 SessionRepository: Loading exams with token: ${token.take(20)}...")
-            println("🔐 SessionRepository: TokenStore state - hasAccessToken: ${tokenStore.hasAccessToken()}")
-            println("🔐 SessionRepository: TokenStore state - tokenExpiry: ${tokenStore.getTokenExpiry()}")
+            Log.d("SessionRepository", "Loading enrollments with token: ${token.take(20)}...")
             
-            val exams = apiClient.getExams(token)
-            println("🔐 SessionRepository: Received ${exams.size} exams from API client")
+            // Come iOS: chiama enrollments che contiene stato, annoAttuale, pianoStudi E situazioneEsami
+            val enrollments = apiClient.getEnrollments(token)
+            Log.d("SessionRepository", "Received enrollments response")
             
-            _exams.value = exams
-            println("🔐 SessionRepository: Updated _exams StateFlow with ${exams.size} exams")
+            // Prendi i dati dal payload se disponibili
+            val enrollmentsPayload = apiClient.getEnrollmentsPayload(token)
             
-            // Log first few exams for debugging
-            exams.take(3).forEachIndexed { index, exam ->
-                println("🔐 SessionRepository: Exam $index: ${exam.corso} - ${exam.voto} - ${exam.anno}")
+            if (enrollmentsPayload != null) {
+                Log.d("SessionRepository", "=== ENROLLMENTS PAYLOAD ===")
+                Log.d("SessionRepository", "stato: '${enrollmentsPayload.stato}'")
+                Log.d("SessionRepository", "annoAttuale: ${enrollmentsPayload.annoAttuale}")
+                Log.d("SessionRepository", "pianoStudi: '${enrollmentsPayload.pianoStudi}'")
+                Log.d("SessionRepository", "situazioneEsami count: ${enrollmentsPayload.situazioneEsami?.size ?: 0}")
+                Log.d("SessionRepository", "=============================")
+                
+                // Aggiorna il profilo con annoAttuale e pianoStudi (come iOS)
+                val profile = tokenManager.userProfile.value
+                if (profile != null) {
+                    val updatedProfile = profile.copy(
+                        status = enrollmentsPayload.stato,
+                        currentYear = enrollmentsPayload.annoAttuale?.toString(),
+                        pianoStudi = enrollmentsPayload.pianoStudi
+                    )
+                    tokenManager.saveUserProfile(updatedProfile)
+                    Log.d("SessionRepository", "Updated profile with enrollments data")
+                }
+                
+                // Converti e salva gli esami
+                val exams = enrollmentsPayload.situazioneEsami?.map { payload ->
+                    Esame(
+                        oid = payload.oidCorso,
+                        corso = payload.corso,
+                        docente = payload.docente,
+                        anno = payload.anno?.toString(),  // Converti Int a String
+                        cfa = payload.cfa,
+                        propedeutico = payload.propedeutico,
+                        data = payload.sostenutoIl,  // sostenutoIl dal payload va in data
+                        voto = payload.voto,
+                        richiedibile = (payload.richiedibile ?: "N").uppercase() == "S"
+                    )
+                } ?: emptyList()
+                
+                _exams.value = exams
+                Log.d("SessionRepository", "Loaded ${exams.size} exams from enrollments")
+                
+                // Log first few exams for debugging
+                exams.take(3).forEachIndexed { index, exam ->
+                    Log.d("SessionRepository", "Exam $index: ${exam.corso} - ${exam.voto} - ${exam.anno}")
+                }
+            } else {
+                // Fallback al vecchio metodo
+                val exams = apiClient.getExams(token)
+                _exams.value = exams
+                Log.d("SessionRepository", "Loaded ${exams.size} exams using fallback method")
             }
         } catch (e: Exception) {
-            println("🔐 SessionRepository: Error loading exams: ${e.message}")
+            Log.d("SessionRepository", "Error loading exams: ${e.message}")
             e.printStackTrace()
         }
     }
@@ -334,12 +420,12 @@ class SessionRepository @Inject constructor(
             val token = tokenStore.getCurrentAccessToken()
             if (token.isEmpty()) return
             
-            println("🔐 SessionRepository: Loading seminars with token: ${token.take(20)}...")
+            Log.d("SessionRepository", "Loading seminars with token: ${token.take(20)}...")
             val seminars = apiClient.getSeminars(token)
             _seminars.value = seminars
-            println("🔐 SessionRepository: Loaded ${seminars.size} seminars")
+            Log.d("SessionRepository", "Loaded ${seminars.size} seminars")
         } catch (e: Exception) {
-            println("🔐 SessionRepository: Error loading seminars: ${e.message}")
+            Log.d("SessionRepository", "Error loading seminars: ${e.message}")
         }
     }
     
@@ -348,7 +434,7 @@ class SessionRepository @Inject constructor(
             val token = tokenStore.getCurrentAccessToken()
             if (token.isEmpty()) return
             
-            println("🔐 SessionRepository: Loading notifications with token: ${token.take(20)}...")
+            Log.d("SessionRepository", "Loading notifications with token: ${token.take(20)}...")
             
             val notificationPayloads = apiClient.getNotifications(token)
             val notifications = notificationPayloads.map { payload ->
@@ -362,9 +448,9 @@ class SessionRepository @Inject constructor(
                 )
             }
             _notifications.value = notifications
-            println("🔐 SessionRepository: Loaded ${notifications.size} notifications")
+            Log.d("SessionRepository", "Loaded ${notifications.size} notifications")
         } catch (e: Exception) {
-            println("🔐 SessionRepository: Error loading notifications: ${e.message}")
+            Log.d("SessionRepository", "Error loading notifications: ${e.message}")
         }
     }
     
@@ -381,6 +467,57 @@ class SessionRepository @Inject constructor(
         return tokenManager.userProfile
     }
     
+    // MARK: - Documents
+    
+    suspend fun getDocuments(): List<LogosDoc> {
+        return try {
+            Log.d("SessionRepository", "getDocuments() called")
+            val token = tokenStore.getCurrentAccessToken()
+            if (token.isEmpty()) {
+                Log.d("SessionRepository", "No access token available for documents")
+                return emptyList()
+            }
+            
+            Log.d("SessionRepository", "Loading documents with token: ${token.take(20)}...")
+            val documents = apiClient.getDocuments(token)
+            Log.d("SessionRepository", "Loaded ${documents.size} documents")
+            
+            // Log first few documents for debugging
+            documents.take(3).forEachIndexed { index, doc ->
+                Log.d("SessionRepository", "Document $index: ${doc.titolo} - ${doc.tipo}")
+            }
+            
+            documents
+        } catch (e: Exception) {
+            Log.d("SessionRepository", "Error loading documents: ${e.message}")
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+    
+    suspend fun downloadDocument(allegatoOid: String): ByteArray? {
+        return try {
+            val token = tokenStore.getCurrentAccessToken()
+            if (token.isEmpty()) {
+                Log.d("SessionRepository", "No access token available for document download")
+                return null
+            }
+            
+            Log.d("SessionRepository", "Downloading document $allegatoOid with token: ${token.take(20)}...")
+            val documentData = apiClient.getDocumentById(token, allegatoOid)
+            if (documentData != null) {
+                Log.d("SessionRepository", "Successfully downloaded document $allegatoOid (${documentData.size} bytes)")
+            } else {
+                Log.d("SessionRepository", "Failed to download document $allegatoOid")
+            }
+            documentData
+        } catch (e: Exception) {
+            Log.d("SessionRepository", "Error downloading document $allegatoOid: ${e.message}")
+            e.printStackTrace()
+            null
+        }
+    }
+    
     // MARK: - Notification Management
     
     suspend fun markNotificationAsRead(notificationId: Int): Boolean {
@@ -395,6 +532,23 @@ class SessionRepository @Inject constructor(
         if (token.isEmpty()) return false
         
         return apiClient.markAllNotificationsAsRead(token)
+    }
+    
+    // Alias methods for ViewModel compatibility
+    suspend fun markNotificationRead(id: Int, read: Boolean) {
+        if (read) {
+            markNotificationAsRead(id)
+        }
+        // If not read, there's no API to unmark, so we just return
+    }
+    
+    suspend fun markAllNotificationsRead() {
+        markAllNotificationsAsRead()
+    }
+    
+    suspend fun deleteNotification(id: Int) {
+        // Not implemented in API yet, just remove from local state
+        _notifications.value = _notifications.value.filter { it.id != id }
     }
     
     // MARK: - Session State
@@ -430,15 +584,6 @@ class SessionRepository @Inject constructor(
         }
     }
     
-    
-    suspend fun downloadDocument(allegatoOid: String): ByteArray? {
-        return try {
-            val token = tokenManager.accessToken.value
-            apiClient.getDocumentById(token, allegatoOid)
-        } catch (e: Exception) {
-            null
-        }
-    }
     
     private fun prettifyTitle(title: String): String {
         return title.lowercase()

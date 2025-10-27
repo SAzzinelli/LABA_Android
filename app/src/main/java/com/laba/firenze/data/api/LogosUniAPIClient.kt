@@ -57,6 +57,25 @@ class LogosUniAPIClient @Inject constructor(
         }
     }
     
+    /**
+     * Ottiene il payload completo di Enrollments con stato, annoAttuale, pianoStudi e situazioneEsami
+     * Come iOS che chiama enrollments per ottenere questi dati
+     */
+    suspend fun getEnrollmentsPayload(token: String): EnrollmentsPayload? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.getEnrollments("Bearer $token")
+                if (response.isSuccessful) {
+                    response.body()?.payload
+                } else {
+                    null
+                }
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
+    
     // MARK: - Exams
     
     suspend fun getExams(token: String): List<Esame> {
@@ -208,13 +227,23 @@ class LogosUniAPIClient @Inject constructor(
     suspend fun getDocuments(token: String): List<LogosDoc> {
         return withContext(Dispatchers.IO) {
             try {
+                println("🔐 LogosUniAPIClient: Getting documents with token: ${token.take(20)}...")
                 val response = apiService.getDocuments("Bearer $token")
+                println("🔐 LogosUniAPIClient: Documents response code: ${response.code()}")
+                println("🔐 LogosUniAPIClient: Documents response body: ${response.body()}")
+                println("🔐 LogosUniAPIClient: Documents response error: ${response.errorBody()?.string()}")
+                
                 if (response.isSuccessful) {
-                    response.body()?.payload?.documents ?: emptyList()
+                    val documents = response.body()?.payload?.documents ?: emptyList()
+                    println("🔐 LogosUniAPIClient: Successfully loaded ${documents.size} documents")
+                    documents
                 } else {
+                    println("🔐 LogosUniAPIClient: Documents request failed")
                     emptyList()
                 }
             } catch (e: Exception) {
+                println("🔐 LogosUniAPIClient: Documents exception: ${e.message}")
+                e.printStackTrace()
                 emptyList()
             }
         }

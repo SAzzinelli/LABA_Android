@@ -25,10 +25,13 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import android.content.Context
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -86,15 +89,14 @@ fun HomeScreen(
             )
         }
         
-        // LESSONS TODAY (solo se ci sono lezioni reali)
-        if (uiState.lessonsToday.isNotEmpty()) {
-            item {
-                LessonsTodayCard(lessons = uiState.lessonsToday)
-            }
+        // LESSONS TODAY (sempre presente, come iOS)
+        item {
+            LessonsTodayCard(lessons = uiState.lessonsToday)
         }
         
-        // UPCOMING EXAMS (solo se ci sono esami reali)
-        if (uiState.upcomingExamsCount > 0) {
+        // UPCOMING EXAMS (solo se ci sono esami reali E siamo nel periodo di esami)
+        val showExamsSection = shouldShowExamsSection()
+        if (showExamsSection && uiState.upcomingExamsCount > 0) {
             item {
                 UpcomingExamsCard(count = uiState.upcomingExamsCount)
             }
@@ -128,16 +130,26 @@ private fun HeroSection(
     statusPills: List<String>,
     isGraduated: Boolean
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "confetti")
-    val confettiPhase by infiniteTransition.animateFloat(
+    val density = LocalDensity.current
+    val context = LocalContext.current
+    val infiniteTransition = rememberInfiniteTransition(label = "hero_animation")
+    val animationPhase by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(30000, easing = LinearEasing),
+            animation = tween(60000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
-        label = "confetti_phase"
+        label = "hero_phase"
     )
+    
+    // Load pattern from preferences (dynamic reading)
+    val sharedPrefs = context.getSharedPreferences("LABA_PREFS", Context.MODE_PRIVATE)
+    var selectedPattern by remember { mutableStateOf("wave") }
+    
+    LaunchedEffect(Unit) {
+        selectedPattern = sharedPrefs.getString("hero_background_pattern", "wave") ?: "wave"
+    }
     
     Box(
         modifier = Modifier
@@ -159,11 +171,25 @@ private fun HeroSection(
                 spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
             )
     ) {
-        // Confetti overlay
-        Canvas(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            drawConfettiOverlay(size, confettiPhase)
+        // Animated pattern overlay based on selection
+        with(density) {
+            Canvas(
+                modifier = Modifier.fillMaxSize()
+            )             {
+                // Convert animationPhase (0-1) to time scale (60s duration)
+                val time = animationPhase * 60f
+                
+                when (selectedPattern) {
+                    "wave" -> drawWavePatternHero(size, time)
+                    "dots" -> drawDotsPatternHero(size, time)
+                    "grid" -> drawGridPatternHero(size, time)
+                    "particles" -> drawParticlesPatternHero(size, time)
+                    "circles" -> drawCirclesPatternHero(size, time)
+                    "rays" -> drawRaysPatternHero(size, time)
+                    "ripple" -> drawRipplePatternHero(size, time)
+                    else -> drawWavePatternHero(size, time)
+                }
+            }
         }
         
         Column(
@@ -176,7 +202,9 @@ private fun HeroSection(
                 text = "Ciao, ${heroInfo.displayName}! 👋",
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             
             StatusPillsRow(
@@ -212,7 +240,7 @@ private fun StatusPillsRow(heroInfo: HeroInfo, pills: List<String>, isGraduated:
             
             // Corso compatto + A.A. (se disponibile)
             val courseDisplay = if (heroInfo.academicYear.isNotEmpty()) {
-                "${heroInfo.courseName} • ${heroInfo.academicYear}"
+                "${heroInfo.courseName} ${heroInfo.academicYear}"
             } else {
                 heroInfo.courseName
             }
@@ -231,7 +259,9 @@ private fun getItalianOrdinalYear(year: Int): String {
         1 -> "1° anno"
         2 -> "2° anno"
         3 -> "3° anno"
-        else -> "$year° anno"
+        4 -> "4° anno"
+        5 -> "5° anno"
+        else -> "$year° anno" // Fuoricorso
     }
 }
 
@@ -392,6 +422,7 @@ private fun YearProgressAndAverageSection(
                     YearProgressCard(
                         year = year,
                         progress = yearProgress?.getProgressForYear(year) ?: 0.0,
+                        missingCount = yearProgress?.getMissingForYear(year) ?: 0,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -415,6 +446,7 @@ private fun YearProgressAndAverageSection(
 private fun YearProgressCard(
     year: Int,
     progress: Double,
+    missingCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -448,7 +480,7 @@ private fun YearProgressCard(
                 )
             } else {
                 Text(
-                    text = "In corso",
+                    text = "$missingCount mancanti",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -569,11 +601,9 @@ private fun CareerAverageCard(
     }
 }
 
-// MARK: - Lessons Today Card (solo se ci sono lezioni reali)
+// MARK: - Lessons Today Card (sempre presente, come iOS)
 @Composable
 private fun LessonsTodayCard(lessons: List<LessonUi>) {
-    if (lessons.isEmpty()) return
-    
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -601,19 +631,63 @@ private fun LessonsTodayCard(lessons: List<LessonUi>) {
                 )
             }
             
-            Text(
-                text = "Oggi",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            
-            lessons.forEachIndexed { index, lesson ->
-                LessonRow(lesson = lesson)
-                if (index < lessons.size - 1) {
+            if (lessons.isEmpty()) {
+                // Nessuna lezione - mostra messaggio come iOS
+                Text(
+                    text = "Oggi",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Nessuna lezione oggi.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(top = 4.dp),
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                )
+                Text(
+                    text = "Nessuna lezione in calendario nei prossimi giorni.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                // Ci sono lezioni - mostra elenco
+                Text(
+                    text = "Oggi",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                lessons.forEachIndexed { index, lesson ->
+                    LessonRow(lesson = lesson)
+                    if (index < lessons.size - 1) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 2.dp),
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                        )
+                    }
+                }
+                
+                // Se ci sono solo poche lezioni, mostra anche domani (come iOS)
+                if (lessons.size <= 2) {
                     HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 2.dp),
+                        modifier = Modifier.padding(top = 4.dp),
                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                    )
+                    Text(
+                        text = "Domani",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Nessuna lezione in calendario.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -876,28 +950,187 @@ private fun PerTeSection(onNavigate: (String) -> Unit) {
 
 // MARK: - Helper Functions
 
-// MARK: - Confetti Drawing
-private fun DrawScope.drawConfettiOverlay(size: Size, phase: Float) {
+// MARK: - Hero Wave Pattern Drawing (animated like iOS)
+private fun DrawScope.drawWavePatternHero(size: Size, time: Float) {
+    val color = Color.White.copy(alpha = 0.8f)
+    val waveCount = 8
+    val spacing = size.height / waveCount
+    val t = time * 0.6f
+    
+    for (i in 0 until waveCount) {
+        val yPos = i * spacing
+        val wavePhase = sin((i * 0.5 + t * 1.2).toDouble()) * 0.3
+        val amplitude: Float = 8f + (i % 3) * 2
+        
+        val wavePath = Path()
+        
+        for (x in 0..size.width.toInt() step 2) {
+            val normalizedX = x.toFloat() / size.width
+            val wave = sin((normalizedX * 6.0 + i * 0.7 + t * 1.5).toDouble()).toFloat() * amplitude
+            val y = yPos + wave + (wavePhase.toFloat() * 3)
+            
+            if (x == 0) {
+                wavePath.moveTo(x.toFloat(), y)
+            } else {
+                wavePath.lineTo(x.toFloat(), y)
+            }
+        }
+        
+        val opacity = 0.4f + (i % 2) * 0.2f
+        drawPath(
+            path = wavePath,
+            color = color.copy(alpha = opacity),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.5f)
+        )
+    }
+}
+
+// MARK: - Additional Hero Patterns
+
+private fun DrawScope.drawDotsPatternHero(size: Size, time: Float) {
+    val color = Color.White.copy(alpha = 0.8f)
     val step = 28f
     val radius = 3f
-    val time = phase * 0.6f
+    val t = time * 0.6f
     
     var y = -step
     while (y <= size.height + step) {
         var x = -step
         while (x <= size.width + step) {
             val seed = (x * 13 + y * 7).toInt()
-            val dx = sin((x + y) / 140f + time * (1.2f + 0.17f * sin(seed.toFloat()))) * 9f * (0.8f + 0.3f * cos(seed.toFloat()))
-            val dy = cos((x - y) / 120f + time * (1.3f + 0.23f * cos((seed + 99).toFloat()))) * 9f * (0.8f + 0.3f * sin((seed + 42).toFloat()))
+            val dx = sin((x + y) / 140f + t * (1.2f + 0.17f * sin(seed.toFloat()))) * 10f * (0.8f + 0.3f * cos(seed.toFloat()))
+            val dy = cos((x - y) / 120f + t * (1.3f + 0.23f * cos((seed + 99).toFloat()))) * 10f * (0.8f + 0.3f * sin((seed + 42).toFloat()))
             
             drawCircle(
-                color = Color.White.copy(alpha = 0.28f),
+                color = color,
                 radius = radius,
                 center = Offset(x + dx, y + dy)
             )
             x += step
         }
         y += step
+    }
+}
+
+private fun DrawScope.drawGridPatternHero(size: Size, time: Float) {
+    val color = Color.White.copy(alpha = 0.8f)
+    val t = time * 0.4f
+    val spacing = 40f
+    
+    // Vertical lines
+    for (x in 0..size.width.toInt() step spacing.toInt()) {
+        val offset = sin(t * 0.8f + x * 0.01f) * 20f
+        drawLine(
+            color = color.copy(alpha = 0.2f),
+            start = Offset(x.toFloat(), -offset),
+            end = Offset(x.toFloat(), size.height + offset),
+            strokeWidth = 1.5f
+        )
+    }
+    
+    // Horizontal lines
+    for (y in 0..size.height.toInt() step spacing.toInt()) {
+        val offset = cos(t * 0.6f + y * 0.01f) * 20f
+        drawLine(
+            color = color.copy(alpha = 0.2f),
+            start = Offset(-offset, y.toFloat()),
+            end = Offset(size.width + offset, y.toFloat()),
+            strokeWidth = 1.5f
+        )
+    }
+}
+
+private fun DrawScope.drawParticlesPatternHero(size: Size, time: Float) {
+    val color = Color.White.copy(alpha = 0.8f)
+    val t = time * 0.5f
+    val particleCount = 50
+    
+    for (i in 0 until particleCount) {
+        val seed = i * 123.456f
+        val sx = (seed * 7.891) % size.width
+        val sy = (seed * 4.567) % size.height
+        val x = ((sx + sin(t * 0.8f + seed * 0.1f) * 40f) % size.width).toFloat()
+        val y = ((sy + cos(t * 0.6f + seed * 0.15f) * 40f) % size.height).toFloat()
+        val size = 3f + (i % 3) * 2f
+        val opacity = 0.4f + (i % 3) * 0.2f
+        
+        drawCircle(
+            color = color.copy(alpha = opacity),
+            radius = size,
+            center = Offset(x, y)
+        )
+    }
+}
+
+private fun DrawScope.drawCirclesPatternHero(size: Size, time: Float) {
+    val color = Color.White.copy(alpha = 0.8f)
+    val t = time * 0.4f
+    val circleCount = 20
+    
+    for (i in 0 until circleCount) {
+        val seed = i * 45.678f
+        val cx = ((seed * 3.141) % size.width).toFloat()
+        val cy = ((seed * 2.718) % size.height).toFloat()
+        val pulse = sin(t + i * 0.5f)
+        val radius = 15f + pulse * 25f
+        
+        drawCircle(
+            color = color.copy(alpha = 0.7f),
+            radius = radius,
+            center = Offset(cx, cy),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f)
+        )
+    }
+}
+
+private fun DrawScope.drawRaysPatternHero(size: Size, time: Float) {
+    val color = Color.White.copy(alpha = 0.8f)
+    val t = time * 0.3f
+    
+    val rayCount = 12
+    for (i in 0 until rayCount) {
+        val angle = (i * 2f * PI.toFloat() / rayCount) + t
+        val length = size.height.coerceAtMost(size.width)
+        
+        val startX = size.width / 2f
+        val startY = size.height / 2f
+        val endX = startX + cos(angle) * length
+        val endY = startY + sin(angle) * length
+        
+        drawLine(
+            color = color.copy(alpha = 0.7f),
+            start = Offset(startX, startY),
+            end = Offset(endX, endY),
+            strokeWidth = 1.5f
+        )
+    }
+}
+
+private fun DrawScope.drawRipplePatternHero(size: Size, time: Float) {
+    val color = Color.White.copy(alpha = 0.8f)
+    val t = time * 0.5f
+    
+    val rippleCount = 5
+    for (i in 0 until rippleCount) {
+        val phase = (t + i * 0.5f) % (2 * PI.toFloat())
+        val radius = phase * 30f
+        
+        val centers = listOf(
+            Offset(size.width * 0.3f, size.height * 0.3f),
+            Offset(size.width * 0.7f, size.height * 0.7f),
+            Offset(size.width * 0.5f, size.height * 0.2f)
+        )
+        
+        centers.forEach { center ->
+            if (phase < 2 * PI.toFloat()) {
+                drawCircle(
+                    color = color.copy(alpha = 0.7f),
+                    radius = radius,
+                    center = center,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f)
+                )
+            }
+        }
     }
 }
 
@@ -959,8 +1192,14 @@ data class LessonUi(
 
 data class YearProgress(
     val year1: Double = 0.0,
+    val year1Total: Int = 0,
+    val year1Missing: Int = 0,
     val year2: Double = 0.0,
-    val year3: Double = 0.0
+    val year2Total: Int = 0,
+    val year2Missing: Int = 0,
+    val year3: Double = 0.0,
+    val year3Total: Int = 0,
+    val year3Missing: Int = 0
 ) {
     fun getProgressForYear(year: Int): Double {
         return when (year) {
@@ -969,5 +1208,42 @@ data class YearProgress(
             3 -> year3
             else -> 0.0
         }
+    }
+    
+    fun getTotalForYear(year: Int): Int {
+        return when (year) {
+            1 -> year1Total
+            2 -> year2Total
+            3 -> year3Total
+            else -> 0
+        }
+    }
+    
+    fun getMissingForYear(year: Int): Int {
+        return when (year) {
+            1 -> year1Missing
+            2 -> year2Missing
+            3 -> year3Missing
+            else -> 0
+        }
+    }
+}
+
+/**
+ * Determina se la sezione esami deve essere mostrata basandosi sui periodi accademici
+ */
+private fun shouldShowExamsSection(): Boolean {
+    val calendar = Calendar.getInstance()
+    val month = calendar.get(Calendar.MONTH) + 1 // 1-12
+    
+    // Periodi in cui mostrare la sezione esami:
+    // - Gennaio (sessione invernale)
+    // - Febbraio (sessione invernale/invernale tardiva)
+    // - Giugno (sessione estiva)  
+    // - Luglio (sessione estiva)
+    // - Settembre (sessione autunnale)
+    return when (month) {
+        1, 2, 6, 7, 9 -> true
+        else -> false
     }
 }

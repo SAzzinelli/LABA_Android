@@ -2,6 +2,7 @@ package com.laba.firenze.ui.profile
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -24,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.laba.firenze.ui.tutorial.TutorialScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,15 +35,29 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val context = LocalContext.current
+    var showTutorial by remember { mutableStateOf(false) }
     
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(start = 20.dp, end = 20.dp, top = 36.dp, bottom = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp),
-        contentPadding = PaddingValues(bottom = 120.dp)
-    ) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Profilo") },
+                actions = {
+                    IconButton(onClick = { navController.navigate("inbox") }) {
+                        Icon(Icons.Default.Notifications, "Notifiche")
+                        // TODO: Show badge if there are unread notifications
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
+            contentPadding = PaddingValues(bottom = 120.dp)
+        ) {
         // Profile Header
         item {
             ProfileHeader(userProfile = uiState.userProfile)
@@ -98,32 +115,18 @@ fun ProfileScreen(
                         title = "Notifiche",
                         icon = Icons.Default.Notifications,
                         onClick = { 
-                            // Apri le impostazioni di sistema per le notifiche
-                            try {
-                                val intent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                                    android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                                        putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
-                                    }
-                                } else {
-                                    android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                        data = android.net.Uri.fromParts("package", context.packageName, null)
-                                    }
-                                }
-                                context.startActivity(intent)
-                            } catch (e: Exception) {
-                                // Fallback: apri le impostazioni generali
-                                try {
-                                    val fallbackIntent = android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
-                                    context.startActivity(fallbackIntent)
-                                } catch (e2: Exception) {
-                                    // Ultimo fallback: impostazioni generali
-                                    try {
-                                        val generalIntent = android.content.Intent(android.provider.Settings.ACTION_SETTINGS)
-                                        context.startActivity(generalIntent)
-                                    } catch (e3: Exception) {
-                                        // Se tutto fallisce, non fare nulla
-                                    }
-                                }
+                            // Naviga alla schermata di impostazioni notifiche
+                            navController.navigate("notifications") {
+                                launchSingleTop = true
+                            }
+                        }
+                    ),
+                    ProfileMenuActionItem(
+                        title = "Aspetto",
+                        icon = Icons.Default.Palette,
+                        onClick = { 
+                            navController.navigate("appearance") {
+                                launchSingleTop = true
                             }
                         }
                     )
@@ -349,9 +352,12 @@ fun ProfileScreen(
                 title = "Azioni",
                 items = listOf(
                     ProfileMenuActionItem(
-                        title = "Ricarica Dati",
-                        icon = Icons.Default.Refresh,
-                        onClick = { viewModel.refreshData() }
+                        title = "Rivedi tutorial",
+                        icon = Icons.Default.Info,
+                        onClick = { 
+                            // Apri il tutorial
+                            showTutorial = true
+                        }
                     ),
                     ProfileActionItem(
                         title = "Esci",
@@ -362,15 +368,44 @@ fun ProfileScreen(
                 )
             )
         }
+        }
+    }
+    
+    // Fullscreen tutorial dialog
+    if (showTutorial) {
+        Dialog(
+            onDismissRequest = { showTutorial = false },
+            properties = androidx.compose.ui.window.DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false
+            )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surface)
+            ) {
+                TutorialScreen(
+                    onDismiss = { showTutorial = false }
+                )
+            }
+        }
     }
 }
 
 @Composable
 private fun ProfileHeader(userProfile: com.laba.firenze.domain.model.StudentProfile?) {
+    val isDarkTheme = isSystemInDarkTheme()
+    
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
+            containerColor = if (isDarkTheme) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                // In light mode, usa un colore più chiaro e delicato
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            }
         ),
         shape = RoundedCornerShape(22.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)

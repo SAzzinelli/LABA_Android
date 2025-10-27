@@ -5,13 +5,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -27,8 +24,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Permette all'app di estendersi sotto la status bar mantenendo i contenuti visibili
+        // Configura il comportamento della tastiera per evitare che sia tagliata (nuova API senza deprecazione)
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            // Gestisce la tastiera automaticamente
+        }
         
         // Imposta la status bar trasparente per permettere all'app di estendersi sotto
         window.statusBarColor = Color.Transparent.toArgb()
@@ -46,10 +46,6 @@ fun LABAAuthWrapper(
 ) {
     val authState by viewModel.authState.collectAsStateWithLifecycle()
     
-    val view = LocalView.current
-    
-    // Nessuna configurazione personalizzata - Android gestisce tutto automaticamente
-    
     LABAFirenzeTheme {
         when {
             authState.isLoading -> {
@@ -58,7 +54,7 @@ fun LABAAuthWrapper(
             }
             authState.isLoggedIn -> {
                 // Request notification permission after successful login
-                NotificationPermissionHelper { permissionGranted ->
+                NotificationPermissionHelper { _ ->
                     // Permission granted or denied - we can log this or handle accordingly
                     // For now, we just proceed with the app
                 }

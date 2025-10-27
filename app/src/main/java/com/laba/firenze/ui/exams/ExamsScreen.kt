@@ -108,11 +108,6 @@ fun ExamsScreen(
         // Header con ricerca
         TopAppBar(
             title = { Text("Esami") },
-            navigationIcon = {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Indietro")
-                }
-            },
             actions = {
                 var showFilterMenu by remember { mutableStateOf(false) }
                 

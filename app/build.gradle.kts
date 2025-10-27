@@ -4,7 +4,7 @@ plugins {
     id("com.google.dagger.hilt.android")
     id("kotlin-parcelize")
     id("com.google.devtools.ksp")
-    // id("com.google.gms.google-services") // Temporaneamente disabilitato
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -97,10 +97,13 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     
-    // Firebase (temporaneamente disabilitato)
-    // implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
-    // implementation("com.google.firebase:firebase-messaging")
-    // implementation("com.google.firebase:firebase-analytics")
+    // Firebase
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation("com.google.firebase:firebase-messaging")
+    implementation("com.google.firebase:firebase-analytics")
+    
+    // Kotlin coroutines extensions for Firebase
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
     
     // JWT
     implementation("io.jsonwebtoken:jjwt-api:0.12.3")

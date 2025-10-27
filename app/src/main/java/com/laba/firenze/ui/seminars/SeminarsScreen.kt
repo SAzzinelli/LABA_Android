@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
@@ -40,15 +41,13 @@ fun SeminarsScreen(
     ) {
         // Top App Bar
         TopAppBar(
-            title = { Text("Seminari") },
-            navigationIcon = {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Indietro")
-                }
-            }
+            title = { Text("Seminari") }
         )
         
-        // Barra di ricerca (identica a Esami)
+        // Tab Selection - SOTTO la barra di ricerca (come in Corsi e Esami)
+        var selectedTab by remember { mutableStateOf(SeminariTab.RICHIESTE) }
+        
+        // Barra di ricerca - PRIMA dei tabs
         OutlinedTextField(
             value = uiState.searchQuery,
             onValueChange = viewModel::updateSearchQuery,
@@ -72,21 +71,86 @@ fun SeminarsScreen(
             )
         )
         
-        // Seminars List
-        if (uiState.seminars.isEmpty()) {
-            EmptyState()
-        } else {
-            LazyColumn(
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 120.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(uiState.seminars) { seminar ->
-                    SeminarCard(
-                        seminar = seminar,
-                        onClick = { 
-                            // Seminari non cliccabili per ora
+        // Tab Selection - SOTTO la barra di ricerca
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            SeminariTab.values().forEach { tab ->
+                val isSelected = selectedTab == tab
+                FilterChip(
+                    onClick = { 
+                        selectedTab = tab
+                        viewModel.setSelectedTab(tab)
+                    },
+                    label = { Text(tab.label) },
+                    selected = isSelected,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(20.dp)),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = LABA_Blue,
+                        selectedLabelColor = Color.White,
+                        containerColor = Color.Transparent
+                    ),
+                    shape = RoundedCornerShape(20.dp)
+                )
+            }
+        }
+        
+        // Content based on selected tab
+        when (selectedTab) {
+            SeminariTab.RICHIESTE -> {
+                // Seminars List
+                if (uiState.seminars.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        EmptyState()
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(uiState.seminars) { seminar ->
+                            SeminarCard(
+                                seminar = seminar,
+                                onClick = { 
+                                    // Seminari non cliccabili per ora
+                                }
+                            )
                         }
-                    )
+                    }
+                }
+            }
+            SeminariTab.FREQUENTATI -> {
+                // Frequentati content (placeholder per ora)
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarToday,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Prossimamente potrai visualizzare i seminari frequentati",
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }

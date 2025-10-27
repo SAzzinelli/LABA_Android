@@ -17,22 +17,29 @@ class MainActivityViewModel @Inject constructor(
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
     
     init {
-        // Monitor login state
+        // Monitor login state (mantieni isLoading attivo se i dati stanno caricando)
         viewModelScope.launch {
             sessionRepository.tokenManager.isLoggedIn.collect { isLoggedIn ->
-                _authState.value = _authState.value.copy(
-                    isLoggedIn = isLoggedIn,
-                    isLoading = false
-                )
+                if (isLoggedIn) {
+                    // Se è loggato, mantieni isLoading true per mostrare lo splash
+                    _authState.value = _authState.value.copy(isLoggedIn = true)
+                } else {
+                    // Se non è loggato, sicuramente non carica
+                    _authState.value = _authState.value.copy(
+                        isLoggedIn = false,
+                        isLoading = false
+                    )
+                }
             }
         }
         
-        // Monitor loading state
+        // Monitor loading state - quando finisce di caricare, aggiorna isLoading
         viewModelScope.launch {
             sessionRepository.isLoading.collect { isLoading ->
-                _authState.value = _authState.value.copy(
-                    isLoading = isLoading
-                )
+                if (!isLoading && _authState.value.isLoggedIn) {
+                    // I dati sono stati caricati e l'utente è loggato
+                    _authState.value = _authState.value.copy(isLoading = false)
+                }
             }
         }
         
@@ -43,6 +50,12 @@ class MainActivityViewModel @Inject constructor(
                 val success = sessionRepository.restoreSessionStrong(force = false)
                 if (success) {
                     println("🔐 MainActivityViewModel: Silent login successful")
+                    
+                    // Verifica se i dati sono già stati caricati (per restore session)
+                    if (!sessionRepository.isLoading.value) {
+                        // I dati sono già caricati, nascondi lo splash
+                        _authState.value = _authState.value.copy(isLoading = false)
+                    }
                 } else {
                     println("🔐 MainActivityViewModel: Silent login failed, showing login UI")
                 }
