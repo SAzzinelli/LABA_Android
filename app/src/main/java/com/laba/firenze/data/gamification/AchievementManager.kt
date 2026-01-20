@@ -233,9 +233,11 @@ class AchievementManager @Inject constructor(
             Log.d("AchievementManager", "⚠️ Cannot save to Supabase: no user email available")
         }
         
-        // Only show UI elements if achievements are enabled
-        if (achievementsEnabled) {
-            // Show in-app notification
+        // Only show UI elements if achievements are enabled AND not already notified
+        val alreadyNotified = _stats.value.notifiedAchievements.contains(id)
+        
+        if (achievementsEnabled && !alreadyNotified) {
+            // Show in-app notification only if not already notified
             _recentlyUnlocked.value = updated
             
             // Show confetti for Epic+ achievements
@@ -256,19 +258,22 @@ class AchievementManager @Inject constructor(
             }
             
             // Mark as notified
-            if (!_stats.value.notifiedAchievements.contains(id)) {
-                _stats.value = _stats.value.copy(
-                    notifiedAchievements = _stats.value.notifiedAchievements + id
-                )
-            }
+            _stats.value = _stats.value.copy(
+                notifiedAchievements = _stats.value.notifiedAchievements + id
+            )
+            Log.d("AchievementManager", "🎉 Showing banner for newly unlocked achievement: ${updated.title}")
         } else {
-            // Silently track
-            if (!_stats.value.notifiedAchievements.contains(id)) {
+            // Silently track (already notified or feature disabled)
+            if (!alreadyNotified) {
                 _stats.value = _stats.value.copy(
                     notifiedAchievements = _stats.value.notifiedAchievements + id
                 )
             }
-            Log.d("AchievementManager", "Silently tracked (feature disabled): ${updated.title}")
+            if (alreadyNotified) {
+                Log.d("AchievementManager", "⏭️ Skipping banner for already notified achievement: ${updated.title}")
+            } else {
+                Log.d("AchievementManager", "Silently tracked (feature disabled): ${updated.title}")
+            }
         }
         
         saveAchievements()
@@ -993,18 +998,37 @@ class AchievementManager @Inject constructor(
     /**
      * Restore achievement from cloud (used by sync service)
      */
-    fun restoreAchievement(achievementID: String, unlockedDate: Long? = null) {
+    fun restoreAchievement(achievementID: String, unlockedDate: Long? = null, silent: Boolean = true) {
         scope.launch {
             val currentList = _achievements.value.toMutableList()
             val index = currentList.indexOfFirst { it.id == achievementID }
             if (index != -1 && !currentList[index].isUnlocked) {
-                currentList[index] = currentList[index].copy(
+                val achievement = currentList[index]
+                currentList[index] = achievement.copy(
                     isUnlocked = true,
                     unlockedDate = unlockedDate ?: System.currentTimeMillis(),
-                    progress = currentList[index].maxProgress
+                    progress = achievement.maxProgress
                 )
                 _achievements.value = currentList
+                
+                // Update stats (points)
+                val pointsToAdd = achievement.points
+                _stats.value = _stats.value.copy(
+                    totalPoints = _stats.value.totalPoints + pointsToAdd,
+                    achievementUnlockDates = _stats.value.achievementUnlockDates + listOf(unlockedDate ?: System.currentTimeMillis())
+                )
+                
+                // Mark as notified se già notificato in passato (per evitare banner duplicati)
+                if (silent && !_stats.value.notifiedAchievements.contains(achievementID)) {
+                    _stats.value = _stats.value.copy(
+                        notifiedAchievements = _stats.value.notifiedAchievements + achievementID
+                    )
+                }
+                
                 saveAchievements()
+                saveStats()
+                
+                Log.d("AchievementManager", "✅ Restored achievement '$achievementID' (silent=$silent)")
             }
         }
     }

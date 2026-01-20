@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -389,7 +390,7 @@ private fun ChecklistSection(minPages: Int) {
             val checklistItems = listOf(
                 Icons.Default.Person to "Scegli argomento e relatore",
                 Icons.Default.Schedule to "Concorda revisioni periodiche con il relatore",
-                Icons.Default.Send to "Alla scadenza delle consegne invia al relatore una versione PDF (almeno l'80% dell'elaborato)",
+                Icons.AutoMirrored.Filled.Send to "Alla scadenza delle consegne invia al relatore una versione PDF (almeno l'80% dell'elaborato)",
                 Icons.Default.Description to "Imposta il frontespizio seguendo le indicazioni sul file che trovi qua",
                 Icons.Default.TextFields to "Almeno $minPages pagine; 2/3 ricerca e 1/3 progetto",
                 Icons.Default.Print to "Stampa 4 copie fisiche e consegnale in segreteria entro la scadenza",

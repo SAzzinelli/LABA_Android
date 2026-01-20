@@ -17,6 +17,10 @@ class ProfileViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
     
+    // Achievement data
+    val achievements: StateFlow<List<com.laba.firenze.domain.model.Achievement>> = achievementManager.achievements
+    val totalPoints: StateFlow<Int> = achievementManager.totalPoints
+    
     init {
         loadUserProfile()
     }

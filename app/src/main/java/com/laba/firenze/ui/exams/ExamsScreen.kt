@@ -106,38 +106,41 @@ fun ExamsScreen(
         selectedYear = viewModel.getCurrentYear() ?: 1
     }
 
+    var statusMenuExpanded by remember { mutableStateOf(false) }
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
     ) {
-        // Header con ricerca
+        // Header con ricerca e filtri di status in alto a destra
         TopAppBar(
             title = { Text("Esami") },
             actions = {
-                var showFilterMenu by remember { mutableStateOf(false) }
-                
                 Box {
-                    IconButton(
-                        onClick = { showFilterMenu = true }
-                    ) {
-                        Icon(Icons.Filled.FilterList, contentDescription = "Filtri")
+                    IconButton(onClick = { statusMenuExpanded = true }) {
+                        Icon(
+                            imageVector = Icons.Filled.FilterList,
+                            contentDescription = "Filtri status"
+                        )
                     }
-                    
                     DropdownMenu(
-                        expanded = showFilterMenu,
-                        onDismissRequest = { showFilterMenu = false }
+                        expanded = statusMenuExpanded,
+                        onDismissRequest = { statusMenuExpanded = false }
                     ) {
                         StatusFilter.values().forEach { filter ->
                             DropdownMenuItem(
                                 text = { Text(getStatusTitle(filter)) },
-                                onClick = { 
+                                onClick = {
                                     statusFilter = filter
-                                    showFilterMenu = false
+                                    statusMenuExpanded = false
                                 },
                                 leadingIcon = {
                                     if (statusFilter == filter) {
-                                        Icon(Icons.Filled.Check, contentDescription = null)
+                                        Icon(
+                                            Icons.Filled.Check,
+                                            contentDescription = null
+                                        )
                                     }
                                 }
                             )
@@ -167,7 +170,7 @@ fun ExamsScreen(
             )
         )
         
-        // Year Filter (come in Corsi)
+        // Year Filters (come in Corsi, in una riga orizzontale)
         LazyRow(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -182,9 +185,7 @@ fun ExamsScreen(
                         )
                     },
                     selected = selectedYear == year,
-                    modifier = Modifier
-                        .width(80.dp)
-                        .clip(RoundedCornerShape(20.dp)),
+                    modifier = Modifier.clip(RoundedCornerShape(20.dp)),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primary,
                         selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
@@ -205,7 +206,7 @@ fun ExamsScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 120.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 140.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Esami regolari

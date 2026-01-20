@@ -160,10 +160,10 @@ class LessonCalendarRepository @Inject constructor(
                 val endDate = parseDate(obj.getString("end"))
                 
                 // Generate ID
-                val firstOidCorsi = obj.optJSONArray("oidCorsi")?.let {
+                val firstOidCorsi: String? = obj.optJSONArray("oidCorsi")?.let {
                     if (it.length() > 0) it.getString(0) else null
                 }
-                val oidCorsoValue = obj.optString("oidCorso", null)
+                val oidCorsoValue: String? = obj.optString("oidCorso", null)
                 val id = generateId(
                     obj.getString("corso"),
                     oidCorsoValue,

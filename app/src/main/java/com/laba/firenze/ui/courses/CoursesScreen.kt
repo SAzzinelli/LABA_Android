@@ -101,7 +101,7 @@ fun CoursesScreen(
         // Courses List
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 120.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 140.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(uiState.courses.filter { isRegularCourse(it.corso) }) { course ->

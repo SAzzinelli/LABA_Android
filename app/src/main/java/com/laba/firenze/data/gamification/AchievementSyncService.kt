@@ -104,8 +104,9 @@ object AchievementSyncService {
                     val achievements = manager.achievements.value
                     val existing = achievements.firstOrNull { it.id == achievementID }
                     if (existing != null && !existing.isUnlocked) {
-                        manager.restoreAchievement(achievementID, System.currentTimeMillis())
-                        Log.d("AchievementSyncService", "✅ Restored local achievement: '$achievementID'")
+                        // Restore in modalità silenziosa (non mostra banner se già notificato)
+                        manager.restoreAchievement(achievementID, System.currentTimeMillis(), silent = true)
+                        Log.d("AchievementSyncService", "✅ Restored local achievement: '$achievementID' (silent)")
                         restoredCount++
                     } else if (existing != null && existing.isUnlocked) {
                         skippedCount++

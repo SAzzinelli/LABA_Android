@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +26,7 @@ import com.laba.firenze.domain.model.Achievement
 import com.laba.firenze.domain.model.AchievementCategory
 import com.laba.firenze.domain.model.AchievementRarity
 import com.laba.firenze.ui.home.HomeViewModel
+import com.laba.firenze.ui.gamification.AchievementIconHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
 import androidx.compose.runtime.collectAsState
@@ -83,8 +85,16 @@ fun AchievementsScreen(
     
     Scaffold(
         topBar = {
-            LargeTopAppBar(
-                title = { Text("Traguardi") }
+            TopAppBar(
+                title = { Text("Traguardi") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Indietro"
+                        )
+                    }
+                }
             )
         }
     ) { padding ->
@@ -93,7 +103,7 @@ fun AchievementsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 140.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 // Overview Section
@@ -309,7 +319,12 @@ fun AchievementRow(
                 contentAlignment = Alignment.Center
             ) {
                 if (achievement.isUnlocked) {
-                    Text(achievement.icon, fontSize = 24.sp)
+                    Icon(
+                        imageVector = AchievementIconHelper.getIconForSFSymbol(achievement.icon),
+                        contentDescription = null,
+                        tint = Color(achievement.category.colorHex),
+                        modifier = Modifier.size(28.dp)
+                    )
                 } else {
                     Icon(
                         Icons.Default.Lock,
@@ -436,9 +451,11 @@ fun AchievementUnlockedToast(
                                     MaterialTheme.shapes.small
                                 )
                         )
-                        Text(
-                            text = achievement.icon,
-                            fontSize = 28.sp
+                        Icon(
+                            imageVector = AchievementIconHelper.getIconForSFSymbol(achievement.icon),
+                            contentDescription = null,
+                            tint = Color(achievement.category.colorHex),
+                            modifier = Modifier.size(32.dp)
                         )
                     }
                     
@@ -510,9 +527,11 @@ fun AchievementDetailDialog(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = achievement.icon,
-                        fontSize = 48.sp
+                    Icon(
+                        imageVector = AchievementIconHelper.getIconForSFSymbol(achievement.icon),
+                        contentDescription = null,
+                        tint = Color(achievement.category.colorHex),
+                        modifier = Modifier.size(48.dp)
                     )
                 }
                 
@@ -569,7 +588,7 @@ fun AchievementDetailDialog(
                             fontWeight = FontWeight.Bold
                         )
                         LinearProgressIndicator(
-                            progress = achievement.progressPercentage.toFloat(),
+                            progress = { achievement.progressPercentage.toFloat() },
                             modifier = Modifier.fillMaxWidth()
                         )
                         Text(

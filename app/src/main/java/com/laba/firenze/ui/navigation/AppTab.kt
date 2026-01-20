@@ -3,6 +3,7 @@ package com.laba.firenze.ui.navigation
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.Help
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.Rule
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -23,7 +24,7 @@ enum class AppTab(
     THESIS("thesis", "Tesi", Icons.Default.School), // Using School as graduationcap not always available, or check if available
     HANDOUTS("handouts", "Dispense", Icons.Default.Description),
     REGULATIONS("regulations", "Regolamenti", Icons.AutoMirrored.Filled.Rule), // Or Gavel? Rule is good
-    PROGRAMS("materials", "Programmi", Icons.Default.MenuBook); // materials route
+    PROGRAMS("materials", "Programmi", Icons.AutoMirrored.Filled.MenuBook); // materials route
 
     companion object {
         fun fromRoute(route: String): AppTab? {

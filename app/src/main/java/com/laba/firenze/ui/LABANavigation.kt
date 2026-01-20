@@ -138,15 +138,12 @@ fun LABANavigation(
                 }
             }
         }
-    ) { innerPadding ->
+    ) {
         Box(modifier = Modifier.fillMaxSize()) {
             NavHost(
                 navController = navController,
                 startDestination = LABANavigation.Home.route,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .windowInsetsPadding(WindowInsets.systemBars),
+            modifier = Modifier.fillMaxSize(),
             enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) },
             exitTransition = { slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300)) },
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300)) },
@@ -344,13 +341,13 @@ fun LABANavigation(
             }
         }
         
-        // Global Achievement Unlocked Toast Banner (shown in all screens)
+        // Global Achievement Unlocked Toast Banner (shown in all screens) - in basso
         recentlyUnlocked?.let { achievement ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp),
-                contentAlignment = Alignment.TopCenter
+                contentAlignment = Alignment.BottomCenter
             ) {
                 AchievementUnlockedToast(
                     achievement = achievement,

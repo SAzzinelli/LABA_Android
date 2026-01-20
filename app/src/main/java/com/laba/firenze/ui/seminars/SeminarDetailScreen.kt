@@ -77,7 +77,7 @@ fun SeminarDetailScreen(
                 .padding(innerPadding)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(bottom = 80.dp)
+            contentPadding = PaddingValues(bottom = 140.dp)
         ) {
             // Titolo del seminario
             item {

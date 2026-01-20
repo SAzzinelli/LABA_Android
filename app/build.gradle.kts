@@ -39,12 +39,14 @@ android {
     }
     
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
     
-    kotlinOptions {
-        jvmTarget = "1.8"
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+        }
     }
     
     buildFeatures {
@@ -59,6 +61,19 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+}
+
+// Allineamento versioni Kotlin - usa versione compatibile
+configurations.all {
+    resolutionStrategy {
+        force("org.jetbrains.kotlin:kotlin-stdlib:2.0.21")
+        force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.0.21")
+        force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.0.21")
+        force("org.jetbrains.kotlin:kotlin-stdlib-common:2.0.21")
+        // Forza anche kotlinx-coroutines a versione compatibile
+        force("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+        force("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     }
 }
 
@@ -147,4 +162,24 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
+
+// Task per rimuovere file duplicati prima della build
+tasks.register("cleanDuplicates") {
+    doLast {
+        val buildDir = file("build/intermediates/classes/debug/transformDebugClassesWithAsm/dirs")
+        if (buildDir.exists()) {
+            buildDir.walkTopDown().forEach { file ->
+                if (file.isFile && file.name.matches(Regex(".* \\d+\\.class$"))) {
+                    file.delete()
+                    println("Rimosso file duplicato: ${file.name}")
+                }
+            }
+        }
+    }
+}
+
+// Esegui cleanDuplicates prima di ogni build
+tasks.named("preBuild").configure {
+    dependsOn("cleanDuplicates")
 }

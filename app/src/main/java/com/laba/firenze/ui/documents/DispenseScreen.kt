@@ -170,7 +170,7 @@ fun DispenseScreen(
                         }
                     } else {
                         LazyColumn(
-                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 80.dp),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 140.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             // Header info

@@ -66,26 +66,13 @@ fun HomeScreen(
         viewModel.refreshOnAppear() 
     }
     
-    val density = LocalDensity.current
-    
-    // Calcola padding dinamico per rispettare status bar, notch e cutout
-    val statusBarPadding = with(density) {
-        WindowInsets.statusBars.getTop(this).toDp()
-    }
-    val displayCutoutPadding = with(density) {
-        WindowInsets.displayCutout.getTop(this).toDp()
-    }
-    
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.statusBars.only(WindowInsetsSides.Top))
-            .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Top)),
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             start = 20.dp, 
             end = 20.dp, 
-            top = maxOf(36.dp, statusBarPadding + displayCutoutPadding + 16.dp), // Rispetta notch/cutout
-            bottom = 100.dp
+            top = 16.dp,
+            bottom = 140.dp
         ),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
@@ -139,14 +126,6 @@ fun HomeScreen(
             LessonsTodayCard(lessons = uiState.lessonsToday)
         }
         
-        // UPCOMING EXAMS (solo se ci sono esami reali E siamo nel periodo di esami)
-        val showExamsSection = shouldShowExamsSection()
-        if (showExamsSection && uiState.upcomingExamsCount > 0) {
-            item {
-                UpcomingExamsCard(count = uiState.upcomingExamsCount)
-            }
-        }
-        
         // PER TE SECTION (come iOS)
         item {
             PerTeSection(
@@ -160,7 +139,7 @@ fun HomeScreen(
             )
         }
         
-        // SERVIZI SECTION (separata, come iOS)
+        // SERVIZI SECTION (separata, come iOS) - senza "Gestione servizi"
         item {
             ServiziSection(
                 onNavigate = { route ->
@@ -168,15 +147,10 @@ fun HomeScreen(
                         "Service LABA" -> navController.navigate("service-laba")
                         "Prenotazione Aule" -> navController.navigate("prenotazione-aule")
                         "Biblioteca" -> navController.navigate("biblioteca")
-                        "Servizi" -> navController.navigate("servizi")
                     }
-                }
+                },
+                showGestioneServizi = false
             )
-        }
-        
-        // Spacer finale
-        item {
-            Spacer(modifier = Modifier.height(30.dp))
         }
     }
 }
@@ -900,47 +874,6 @@ private fun DayBadge(date: String, text: String = "", isNow: Boolean = false) {
     }
 }
 
-// MARK: - Upcoming Exams Card (solo se ci sono esami reali)
-@Composable
-private fun UpcomingExamsCard(count: Int) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        ),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Assignment,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = "Prossimi esami",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            
-            Text(
-                text = if (count > 0) "Hai $count esami in arrivo" else "Al momento non ci sono esami programmati",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
-        }
-    }
-}
-
 // MARK: - Per Te Section (come iOS - solo Voto di laurea e Simula media)
 @Composable
 private fun PerTeSection(
@@ -1041,7 +974,7 @@ private fun PerTeSection(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.TrendingUp,
+                        imageVector = Icons.AutoMirrored.Filled.TrendingUp,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -1081,7 +1014,10 @@ private fun PerTeSection(
 
 // MARK: - Servizi Section (separata, come iOS)
 @Composable
-private fun ServiziSection(onNavigate: (String) -> Unit) {
+private fun ServiziSection(
+    onNavigate: (String) -> Unit,
+    showGestioneServizi: Boolean = true
+) {
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -1218,43 +1154,45 @@ private fun ServiziSection(onNavigate: (String) -> Unit) {
             }
         }
         
-        // Servizi (gestione funzionalità)
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onNavigate("Servizi") },
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer
-            ),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Row(
+        // Servizi (gestione funzionalità) - solo se showGestioneServizi è true
+        if (showGestioneServizi) {
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .clickable { onNavigate("Servizi") },
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
+                shape = RoundedCornerShape(16.dp)
             ) {
                 Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Gestione servizi",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                     Icon(
-                        imageVector = Icons.Default.Settings,
+                        imageVector = Icons.Default.ChevronRight,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "Gestione servizi",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }
@@ -1589,43 +1527,6 @@ private fun BookedExamRow(
                     }
                 }
             }
-            
-            exam.dataRichiesta?.let { dataRichiesta ->
-                val formattedDate = remember(dataRichiesta) {
-                    try {
-                        val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-                        val date = dateFormat.parse(dataRichiesta)
-                        if (date != null) {
-                            val outputFormat = SimpleDateFormat("dd/MM/yyyy", Locale.ITALIAN)
-                            outputFormat.format(date)
-                        } else {
-                            null
-                        }
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
-                
-                formattedDate?.let { formatted ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.padding(top = 2.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CalendarToday,
-                            contentDescription = null,
-                            modifier = Modifier.size(12.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "Prenotato il $formatted",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
         }
     }
 }
@@ -1747,24 +1648,5 @@ data class YearProgress(
             3 -> year3Missing
             else -> 0
         }
-    }
-}
-
-/**
- * Determina se la sezione esami deve essere mostrata basandosi sui periodi accademici
- */
-private fun shouldShowExamsSection(): Boolean {
-    val calendar = Calendar.getInstance()
-    val month = calendar.get(Calendar.MONTH) + 1 // 1-12
-    
-    // Periodi in cui mostrare la sezione esami:
-    // - Gennaio (sessione invernale)
-    // - Febbraio (sessione invernale/invernale tardiva)
-    // - Giugno (sessione estiva)  
-    // - Luglio (sessione estiva)
-    // - Settembre (sessione autunnale)
-    return when (month) {
-        1, 2, 6, 7, 9 -> true
-        else -> false
     }
 }

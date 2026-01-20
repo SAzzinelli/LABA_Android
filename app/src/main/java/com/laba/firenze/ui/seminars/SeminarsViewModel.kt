@@ -53,7 +53,7 @@ class SeminarsViewModel @Inject constructor(
     fun sendMissingSeminarEmail(seminarName: String, context: android.content.Context) {
         val profile = sessionRepository.getUserProfile()
         val nomeCompleto = profile?.displayName ?: "Nome Cognome"
-        val corsoFormattato = profile?.pianoStudi?.capitalize() ?: "Corso"
+        val corsoFormattato = profile?.pianoStudi?.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() } ?: "Corso"
         val anno = profile?.currentYear?.let { "$it° anno" } ?: "anno accademico"
         val cellulareContact = profile?.cellulare ?: profile?.telefono ?: "non disponibile"
         

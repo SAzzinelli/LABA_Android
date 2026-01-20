@@ -1,6 +1,7 @@
 package com.laba.firenze.ui.profile
 
 import android.content.Intent
+import android.content.SharedPreferences
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,6 +36,7 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
     var showTutorial by remember { mutableStateOf(false) }
     var showGroupDisabledAlert by remember { mutableStateOf(false) }
     
@@ -49,6 +51,17 @@ fun ProfileScreen(
     val isGraduated = status.contains("laureat")
     val isFuoricorso = currentYear == null && !isGraduated
     val shouldDisableGroup = isGraduated || isFuoricorso
+    
+    // Achievement data
+    val sharedPrefs: SharedPreferences = remember { 
+        context.getSharedPreferences("LABA_PREFS", android.content.Context.MODE_PRIVATE)
+    }
+    val achievementsEnabled = remember { 
+        sharedPrefs.getBoolean("laba.achievements.enabled", false) 
+    }
+    val achievements by viewModel.achievements.collectAsState()
+    val totalPoints by viewModel.totalPoints.collectAsState()
+    val unlockedCount = achievements.count { it.isUnlocked }
 
     Scaffold(
         topBar = {
@@ -73,28 +86,26 @@ fun ProfileScreen(
         ) {
         // Profile Header
         item {
-            ProfileHeader(userProfile = uiState.userProfile)
+            ProfileHeader(
+                userProfile = uiState.userProfile,
+                achievementsEnabled = achievementsEnabled,
+                unlockedCount = unlockedCount,
+                totalPoints = totalPoints,
+                onAchievementsClick = { navController.navigate("achievements") },
+                onAnagraficaClick = { navController.navigate("anagrafica") },
+                onServiziClick = { navController.navigate("servizi") }
+            )
         }
         
-        // La tua carriera Section
+        // La tua carriera Section (senza Traguardi, che è nel widget)
         item {
             ProfileSection(
                 title = "La tua carriera",
                 items = listOf(
                     ProfileMenuActionItem(
-                        title = "Anagrafica",
-                        icon = Icons.Default.Person,
-                        onClick = { navController.navigate("anagrafica") }
-                    ),
-                    ProfileMenuActionItem(
                         title = "Tessera studente",
-                        icon = Icons.Default.Badge, // Or CardMembership if Badge not available
+                        icon = Icons.Default.Badge,
                         onClick = { navController.navigate("student_card") }
-                    ),
-                    ProfileMenuActionItem(
-                        title = "Traguardi",
-                        icon = Icons.Default.EmojiEvents, // Trophy icon
-                        onClick = { navController.navigate("achievements") }
                     ),
                     ProfileMenuActionItem(
                         title = "Il tuo gruppo",
@@ -111,34 +122,51 @@ fun ProfileScreen(
                     ProfileMenuActionItem(
                         title = "Agevolazioni",
                         icon = Icons.Default.LocalOffer,
-                        onClick = { navController.navigate("benefits") } // This is LABANavigation.Benefits.route ("benefits")
+                        onClick = { navController.navigate("benefits") }
                     )
                 )
             )
         }
         
-        // Resources Section
+        // Risorse Section (con Regolamenti e descrizione footer)
         item {
-            ProfileSection(
-                title = "Risorse",
-                items = listOf(
-                    ProfileMenuActionItem(
-                        title = "Programmi didattici",
-                        icon = Icons.Default.School,
-                        onClick = { navController.navigate("materials") }
-                    ),
-                    ProfileMenuActionItem(
-                        title = "Dispense",
-                        icon = Icons.Default.Description,
-                        onClick = { navController.navigate("handouts") }
-                    ),
-                    ProfileMenuActionItem(
-                        title = "Tesi di laurea",
-                        icon = Icons.Default.School,
-                        onClick = { navController.navigate("thesis") }
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ProfileSection(
+                    title = "Risorse",
+                    items = listOf(
+                        ProfileMenuActionItem(
+                            title = "Programmi didattici",
+                            icon = Icons.Default.School,
+                            onClick = { navController.navigate("materials") }
+                        ),
+                        ProfileMenuActionItem(
+                            title = "Dispense",
+                            icon = Icons.Default.Description,
+                            onClick = { navController.navigate("handouts") }
+                        ),
+                        ProfileMenuActionItem(
+                            title = "Regolamenti",
+                            icon = Icons.AutoMirrored.Filled.Rule,
+                            onClick = { navController.navigate("regulations") }
+                        ),
+                        ProfileMenuActionItem(
+                            title = "Tesi di laurea",
+                            icon = Icons.Default.School,
+                            onClick = { navController.navigate("thesis") }
+                        )
                     )
                 )
-            )
+                
+                // Footer description (come iOS)
+                Text(
+                    text = "Puoi personalizzare la barra di navigazione e spostare qui le sezioni che usi meno da Profilo > Aspetto.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
         }
         
         // Utilità Section (identica a iOS)
@@ -147,39 +175,20 @@ fun ProfileScreen(
                 title = "Utilità",
                 items = listOf(
                     ProfileMenuActionItem(
-                        title = "FAQ",
+                        title = "Consulta FAQ",
                         icon = Icons.AutoMirrored.Filled.Help,
                         onClick = { navController.navigate("faq") }
                     ),
                     ProfileMenuActionItem(
                         title = "Servizi",
-                        icon = Icons.Default.Settings,
+                        icon = Icons.Default.Build,
                         onClick = { navController.navigate("servizi") }
                     )
                 )
             )
         }
         
-        // Assistance Section
-        item {
-            ProfileSection(
-                title = "Assistenza",
-                items = listOf(
-                    ProfileMenuActionItem(
-                        title = "Regolamenti",
-                        icon = Icons.AutoMirrored.Filled.Rule,
-                        onClick = { navController.navigate("regulations") }
-                    ),
-                    ProfileMenuActionItem(
-                        title = "Privacy e Sicurezza",
-                        icon = Icons.Default.PrivacyTip,
-                        onClick = { navController.navigate("privacy-security") }
-                    )
-                )
-            )
-        }
-        
-        // Preferences Section
+        // Preferences Section (con Apple Watch)
         item {
             ProfileSection(
                 title = "Preferenze",
@@ -188,7 +197,6 @@ fun ProfileScreen(
                         title = "Notifiche",
                         icon = Icons.Default.Notifications,
                         onClick = { 
-                            // Naviga alla schermata di impostazioni notifiche
                             navController.navigate("notifications") {
                                 launchSingleTop = true
                             }
@@ -202,21 +210,19 @@ fun ProfileScreen(
                                 launchSingleTop = true
                             }
                         }
-                    )
                 )
             )
+           )
         }
         
-        // Contacts Section
+        // Contatti Section (identica a iOS)
         item {
-            val context = LocalContext.current
             ProfileSection(
                 title = "Contatti",
                 items = listOf(
                     ProfileMenuActionItem(
-                        title = "Email Segreteria",
+                        title = "Scrivi alla Segreteria",
                         icon = Icons.Default.Email,
-                        subtitle = "info@laba.biz",
                         onClick = {
                             val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
                                 data = Uri.parse("mailto:info@laba.biz")
@@ -226,35 +232,31 @@ fun ProfileScreen(
                                 if (emailIntent.resolveActivity(context.packageManager) != null) {
                                     context.startActivity(emailIntent)
                                 } else {
-                                    // Fallback: apri browser con mailto
                                     val fallbackIntent = Intent(Intent.ACTION_VIEW).apply {
                                         data = Uri.parse("mailto:info@laba.biz")
                                     }
                                     context.startActivity(fallbackIntent)
                                 }
                             } catch (e: Exception) {
-                                // Log dell'errore per debug
                                 android.util.Log.e("ProfileScreen", "Errore apertura email: ${e.message}")
                             }
                         }
                     ),
                     ProfileMenuActionItem(
-                        title = "Telefono Segreteria",
-                        icon = Icons.Default.Phone,
-                        subtitle = "055 653 0786",
+                        title = "Scrivici su WhatsApp",
+                        icon = Icons.AutoMirrored.Filled.Message,
                         onClick = {
-                            val phoneIntent = Intent(Intent.ACTION_DIAL).apply {
-                                data = Uri.parse("tel:0556530786")
-                            }
                             try {
-                                if (phoneIntent.resolveActivity(context.packageManager) != null) {
-                                    context.startActivity(phoneIntent)
+                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                    data = Uri.parse("https://wa.me/393516905915")
+                                }
+                                if (intent.resolveActivity(context.packageManager) != null) {
+                                    context.startActivity(intent)
                                 } else {
-                                    // Fallback: mostra numero in toast
-                                    android.widget.Toast.makeText(context, "Numero: 055 653 0786", android.widget.Toast.LENGTH_LONG).show()
+                                    android.widget.Toast.makeText(context, "WhatsApp non installato", android.widget.Toast.LENGTH_SHORT).show()
                                 }
                             } catch (e: Exception) {
-                                android.util.Log.e("ProfileScreen", "Errore apertura telefono: ${e.message}")
+                                android.util.Log.e("ProfileScreen", "Errore apertura WhatsApp: ${e.message}")
                             }
                         }
                     )
@@ -269,9 +271,8 @@ fun ProfileScreen(
                 title = "Link utili",
                 items = listOf(
                     ProfileMenuActionItem(
-                        title = "Sito LABA",
+                        title = "Sito web LABA",
                         icon = Icons.Default.Language,
-                        subtitle = "www.laba.biz",
                         onClick = {
                             try {
                                 // Crea Intent con chooser per selezionare browser
@@ -319,8 +320,8 @@ fun ProfileScreen(
                     ),
                     ProfileActionItem(
                         title = "Pagamento DSU Toscana",
-                        icon = Icons.Default.Payment,
-                        iconColor = MaterialTheme.colorScheme.error,
+                        icon = Icons.Default.CreditCard,
+                        iconColor = Color(0xFFF44336), // Rosso come iOS
                         onClick = {
                             try {
                                 // Crea Intent con chooser per selezionare browser
@@ -369,7 +370,6 @@ fun ProfileScreen(
                     ProfileMenuActionItem(
                         title = "Privacy Policy",
                         icon = Icons.Default.PrivacyTip,
-                        subtitle = "Informativa sulla privacy",
                         onClick = {
                             try {
                                 // Crea Intent con chooser per selezionare browser
@@ -424,18 +424,18 @@ fun ProfileScreen(
             ProfileSection(
                 title = "Azioni",
                 items = listOf(
-                    ProfileMenuActionItem(
+                    ProfileActionItem(
                         title = "Rivedi tutorial",
                         icon = Icons.Default.Info,
+                        iconColor = MaterialTheme.colorScheme.primary,
                         onClick = { 
-                            // Apri il tutorial
                             showTutorial = true
                         }
                     ),
                     ProfileActionItem(
                         title = "Esci",
                         icon = Icons.AutoMirrored.Filled.ExitToApp,
-                        iconColor = MaterialTheme.colorScheme.primary,
+                        iconColor = Color(0xFFF44336), // Rosso come iOS
                         onClick = { viewModel.logout() }
                     )
                 )
@@ -480,7 +480,15 @@ fun ProfileScreen(
 }
 
 @Composable
-private fun ProfileHeader(userProfile: com.laba.firenze.domain.model.StudentProfile?) {
+private fun ProfileHeader(
+    userProfile: com.laba.firenze.domain.model.StudentProfile?,
+    achievementsEnabled: Boolean,
+    unlockedCount: Int,
+    totalPoints: Int,
+    onAchievementsClick: () -> Unit,
+    onAnagraficaClick: () -> Unit,
+    onServiziClick: () -> Unit
+) {
     val isDarkTheme = isSystemInDarkTheme()
     
     Card(
@@ -489,7 +497,6 @@ private fun ProfileHeader(userProfile: com.laba.firenze.domain.model.StudentProf
             containerColor = if (isDarkTheme) {
                 MaterialTheme.colorScheme.primaryContainer
             } else {
-                // In light mode, usa un colore più chiaro e delicato
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
             }
         ),
@@ -502,11 +509,13 @@ private fun ProfileHeader(userProfile: com.laba.firenze.domain.model.StudentProf
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Avatar placeholder
+                // Avatar placeholder (cliccabile per anagrafica)
                 Surface(
-                    modifier = Modifier.size(60.dp),
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clickable { onAnagraficaClick() },
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primary
                 ) {
@@ -516,19 +525,28 @@ private fun ProfileHeader(userProfile: com.laba.firenze.domain.model.StudentProf
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = "Avatar",
-                            modifier = Modifier.size(32.dp),
+                            modifier = Modifier.size(28.dp),
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                 }
                 
-                Column {
-                            Text(
-                                text = userProfile?.displayName ?: "Studente LABA",
-                                style = MaterialTheme.typography.headlineSmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                fontWeight = FontWeight.Bold
-                            )
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onAnagraficaClick() }
+                ) {
+                    Text(
+                        text = userProfile?.displayName ?: "Studente LABA",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Tocca per i tuoi dati anagrafici",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    )
                 }
             }
             
@@ -537,13 +555,13 @@ private fun ProfileHeader(userProfile: com.laba.firenze.domain.model.StudentProf
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                        // Pillola stato pagamenti (verde o rossa)
-                        val pagamentiInRegola = userProfile?.pagamenti?.lowercase()?.contains("ok") == true
+                // Pillola stato pagamenti
+                val pagamentiInRegola = userProfile?.pagamenti?.uppercase() == "OK"
                 Surface(
                     color = if (pagamentiInRegola) {
-                        Color(0xFF4CAF50) // Verde per pagamenti in regola
+                        Color(0xFF4CAF50) // Verde
                     } else {
-                        Color(0xFFF44336) // Rosso per pagamenti non in regola
+                        Color(0xFFF44336) // Rosso
                     },
                     shape = RoundedCornerShape(16.dp)
                 ) {
@@ -559,7 +577,7 @@ private fun ProfileHeader(userProfile: com.laba.firenze.domain.model.StudentProf
                             tint = Color.White
                         )
                         Text(
-                            text = if (pagamentiInRegola) "Pagamenti in regola" else "Pagamenti in ritardo",
+                            text = if (pagamentiInRegola) "Pagamenti in regola" else "Pagamenti non in regola",
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.White,
                             fontWeight = FontWeight.Medium
@@ -567,7 +585,8 @@ private fun ProfileHeader(userProfile: com.laba.firenze.domain.model.StudentProf
                     }
                 }
                 
-                // Pillola numero matricola (grigia)
+                // Pillola numero matricola
+                val matricolaDisplay = userProfile?.matricola ?: "N/A"
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     shape = RoundedCornerShape(16.dp)
@@ -578,13 +597,13 @@ private fun ProfileHeader(userProfile: com.laba.firenze.domain.model.StudentProf
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            Icons.Filled.Badge,
+                            Icons.Filled.Tag,
                             contentDescription = null,
                             modifier = Modifier.size(14.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "Matricola: ${userProfile?.matricola ?: "N/A"}",
+                            text = "# Matricola: $matricolaDisplay",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Medium
@@ -592,6 +611,110 @@ private fun ProfileHeader(userProfile: com.laba.firenze.domain.model.StudentProf
                     }
                 }
             }
+            
+            // Widget Traguardi (sempre visibile, come iOS)
+            Spacer(modifier = Modifier.height(12.dp))
+            ProfileAchievementWidget(
+                unlockedCount = unlockedCount,
+                totalPoints = totalPoints,
+                enabled = achievementsEnabled,
+                onClick = onAchievementsClick // Sempre apre la schermata Traguardi
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProfileAchievementWidget(
+    unlockedCount: Int,
+    totalPoints: Int,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = true) { onClick() },
+        colors = CardDefaults.cardColors(
+            containerColor = if (enabled) {
+                Color(0xFFFFF9C4) // Giallo chiaro come iOS quando abilitato
+            } else {
+                Color(0xFFFFF9C4).copy(alpha = 0.5f) // Più trasparente quando disabilitato
+            }
+        ),
+        shape = RoundedCornerShape(18.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Icona trofeo in cerchio
+                Surface(
+                    modifier = Modifier.size(44.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.EmojiEvents,
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                
+                Column {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Traguardi",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "$unlockedCount",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "+ $totalPoints punti",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+            
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -701,13 +824,30 @@ private fun ProfileMenuItem(item: ProfileMenuItem) {
             ) {
                 ListItem(
                     headlineContent = { Text(item.title) },
-                    supportingContent = { Text(item.value) },
                     leadingContent = {
                         Icon(
                             imageVector = item.icon,
                             contentDescription = item.title,
                             tint = MaterialTheme.colorScheme.primary
                         )
+                    },
+                    trailingContent = {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = item.value,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            // Punto colorato (verde per "Sì", rosso per "No")
+                            Surface(
+                                modifier = Modifier.size(8.dp),
+                                shape = CircleShape,
+                                color = if (item.value == "Sì") Color(0xFF4CAF50) else Color(0xFFF44336)
+                            ) {}
+                        }
                     },
                     colors = ListItemDefaults.colors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer

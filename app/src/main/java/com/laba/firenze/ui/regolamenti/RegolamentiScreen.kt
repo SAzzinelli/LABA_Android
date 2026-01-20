@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -71,7 +72,7 @@ fun RegolamentiScreen(
                 title = "Norme generali",
                 url = "https://laba.biz/wp-content/uploads/2025/03/REGOLAMENTO-GENERALE-24-25.pdf",
                 category = RegolamentoCategory.DIDATTICA,
-                icon = Icons.Default.List,
+                icon = Icons.AutoMirrored.Filled.List,
                 note = "Approfondimenti e integrazioni al Regolamento Didattico"
             ),
             RegolamentoDocument(

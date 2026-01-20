@@ -96,7 +96,7 @@ fun BookedExamsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 140.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 itemsIndexed(bookedExams) { index, exam ->
@@ -104,7 +104,8 @@ fun BookedExamsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                navController.navigate("exam-detail/${exam.oid ?: "index_$index"}")
+                                val examId = exam.oid ?: "index_${bookedExams.indexOf(exam)}"
+                                navController.navigate("exam_detail/$examId")
                             },
                         shape = RoundedCornerShape(12.dp),
                         color = MaterialTheme.colorScheme.surfaceContainer
