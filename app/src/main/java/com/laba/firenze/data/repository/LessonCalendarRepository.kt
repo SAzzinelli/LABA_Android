@@ -43,31 +43,104 @@ class LessonCalendarRepository @Inject constructor(
         }
     }
     
-    suspend fun syncFromURL(force: Boolean = true): Boolean {
+    suspend fun syncLessons(pianoStudi: String?, currentYear: Int?, force: Boolean = true): Boolean {
+        // 1. Try GitHub Pages (Primary)
+        val ghSuccess = syncFromGitHubPages(pianoStudi, currentYear)
+        if (ghSuccess) {
+            Log.d(TAG, "Synced successfully from GitHub Pages")
+            return true
+        }
+        
+        // 2. Fallback to npoint (Reserve)
+        Log.w(TAG, "GitHub Pages sync failed, falling back to npoint")
+        return syncFromNpoint()
+    }
+
+    private suspend fun syncFromGitHubPages(pianoStudi: String?, currentYear: Int?): Boolean {
+        val courseCode = indirizzoCode(pianoStudi)
+        if (courseCode == null) {
+            Log.e(TAG, "Could not determine course code from: $pianoStudi")
+            return false
+        }
+        
+        // Default to year 1 if null, just like a safe fallback, though usually should be passed
+        val year = currentYear ?: 1 
+        val semester = currentSemester()
+        
+        // Construct URL: https://SAzzinelli.github.io/LABA_Orari/orari/{CORSO}/{ANNO}/{SEMESTRE}sem.json
+        val urlString = "https://SAzzinelli.github.io/LABA_Orari/orari/$courseCode/$year/${semester}sem.json"
+        
+        Log.d(TAG, "Attempting GitHub sync: $urlString")
+        
+        return try {
+            val response = fetchUrl(urlString)
+            val events = parseLessons(response)
+            if (events.isNotEmpty()) {
+                _events.value = events
+                cacheFile.writeText(response)
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "GitHub sync failed: ${e.message}")
+            false
+        }
+    }
+
+    private suspend fun syncFromNpoint(): Boolean {
         return try {
             Log.d(TAG, "Fetching lessons from npoint...")
-            
-            val url = java.net.URL(NPOINT_URL)
-            val connection = url.openConnection()
-            connection.connect()
-            
-            val inputStream = connection.getInputStream()
-            val response = inputStream.bufferedReader().use { it.readText() }
-            
-            inputStream.close()
-            
+            val response = fetchUrl(NPOINT_URL)
             val events = parseLessons(response)
             _events.value = events
-            
-            // Save to cache
             cacheFile.writeText(response)
-            
-            Log.d(TAG, "Synced ${events.size} events")
+            Log.d(TAG, "Synced ${events.size} events from npoint")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Error syncing lessons", e)
+            Log.e(TAG, "Error syncing lessons (npoint)", e)
             loadCacheIfAvailable()
             false
+        }
+    }
+
+    private fun fetchUrl(urlString: String): String {
+        val url = java.net.URL(urlString)
+        val connection = url.openConnection() as java.net.HttpURLConnection
+        connection.connectTimeout = 10000 // 10s timeout
+        connection.readTimeout = 10000
+        connection.connect()
+        
+        if (connection.responseCode !in 200..299) {
+            throw java.io.IOException("HTTP ${connection.responseCode}")
+        }
+        
+        return connection.inputStream.bufferedReader().use { it.readText() }
+    }
+
+    // Exact iOS Logic for Semester
+    private fun currentSemester(): Int {
+        val calendar = Calendar.getInstance()
+        val month = calendar.get(Calendar.MONTH) + 1 // 1-12
+        // S1: Oct(10), Nov(11), Dec(12), Jan(1), Feb(2)
+        // S2: Mar(3) ... Sep(9)
+        return if (month >= 10 || month <= 2) 1 else 2
+    }
+
+    // Exact iOS Logic for Course Mapping
+    private fun indirizzoCode(piano: String?): String? {
+        if (piano.isNullOrEmpty()) return null
+        val ps = piano.lowercase()
+        return when {
+            ps.contains("interior") -> "INT"
+            ps.contains("cinema") || ps.contains("audiovisiv") -> "CINEMA"
+            ps.contains("graphic") || ps.contains("multimedia") || ps.contains("grafica") -> "GD"
+            ps.contains("fotografia") || ps.contains("photo") -> "FOTO"
+            ps.contains("fashion") -> "FD"
+            ps.contains("pittura") || ps.contains("painting") -> "PIT"
+            ps.contains("regia") || ps.contains("videomaking") || ps.contains("regia e video") -> "REGIA"
+            ps.contains("design") -> "DES" // After Interior check
+            else -> null
         }
     }
     
@@ -114,7 +187,8 @@ class LessonCalendarRepository @Inject constructor(
                     docente = if (obj.has("docente") && !obj.isNull("docente")) obj.getString("docente") else null,
                     start = startDate,
                     end = endDate,
-                    note = if (obj.has("note") && !obj.isNull("note")) obj.getString("note") else null
+                    note = if (obj.has("note") && !obj.isNull("note")) obj.getString("note") else null,
+                    gruppo = if (obj.has("gruppo") && !obj.isNull("gruppo")) obj.getString("gruppo") else null
                 )
                 
                 events.add(event)

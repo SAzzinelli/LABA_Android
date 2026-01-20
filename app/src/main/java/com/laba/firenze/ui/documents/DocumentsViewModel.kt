@@ -13,7 +13,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DocumentsViewModel @Inject constructor(
-    private val sessionRepository: SessionRepository
+    private val sessionRepository: SessionRepository,
+    private val achievementManager: com.laba.firenze.data.gamification.AchievementManager
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(DocumentsUiState())
@@ -58,6 +59,10 @@ class DocumentsViewModel @Inject constructor(
         } catch (e: Exception) {
             null
         }
+    }
+    
+    fun trackDispenseOpen(dispenseId: String) {
+        achievementManager.trackDispenseOpen(dispenseId)
     }
 }
 

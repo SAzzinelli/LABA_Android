@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.laba.firenze.domain.model.Seminario
 
@@ -24,24 +25,39 @@ import com.laba.firenze.domain.model.Seminario
 @Composable
 fun SeminarDetailScreen(
     navController: NavController,
-    seminarId: String
+    seminarId: String,
+    viewModel: SeminarsViewModel = hiltViewModel()
 ) {
-    // TODO: Recuperare il seminario dal repository usando seminarId
-    // Per ora uso un seminario mock per evitare crash
-    val mockSeminar = Seminario(
-        oid = seminarId,
-        titolo = "Seminario",
-        docente = "Docente",
-        dataInizio = "2024-01-01",
-        dataFine = "2024-01-01",
-        aula = "Aula A",
-        prenotabile = true,
-        descrizioneEstesa = "Descrizione non disponibile",
-        esito = "",
-        gruppiStudenti = emptyList()
-    )
-    val details = parseSeminarDetails(mockSeminar.descrizioneEstesa, mockSeminar.esito)
+    val uiState by viewModel.uiState.collectAsState()
+    val seminar = viewModel.getSeminarById(seminarId)
     var showBookingAlert by remember { mutableStateOf(false) }
+    
+    if (seminar == null) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Seminario non trovato") },
+                    navigationIcon = {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Indietro")
+                        }
+                    }
+                )
+            }
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Seminario non trovato")
+            }
+        }
+        return
+    }
+    
+    val details = parseSeminarDetails(seminar.descrizioneEstesa, seminar.esito)
     
     Scaffold(
         topBar = {
@@ -75,7 +91,7 @@ fun SeminarDetailScreen(
                         modifier = Modifier.padding(20.dp)
                     ) {
                         Text(
-                            text = prettifyTitle(mockSeminar.titolo),
+                            text = prettifyTitle(seminar.titolo),
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -266,7 +282,7 @@ fun SeminarDetailScreen(
                     title = "Prenotazione",
                     icon = Icons.Default.Event
                 ) {
-                    if (mockSeminar.prenotabile) {
+                    if (seminar.prenotabile) {
                         Button(
                             onClick = { showBookingAlert = true },
                             modifier = Modifier.fillMaxWidth()

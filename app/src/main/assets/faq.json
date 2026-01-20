@@ -1,0 +1,31 @@
+{
+  "categories": [
+    {
+      "id": "domande-comuni",
+      "title": "Domande comuni",
+      "items": [
+        {
+          "id": "faq-1",
+          "q": "Dove sono le sedi LABA Firenze?",
+          "a": "Fashion Design: Via de' Vecchietti 6. Sede principale e altri indirizzi: Piazza di Badia a Ripoli 1/A."
+        },
+        {
+          "id": "faq-2",
+          "q": "Come ricevo comunicazioni ufficiali?",
+          "a": "Alla mail @labafirenze.com e come avvisi/notifiche in app."
+        }
+      ]
+    },
+    {
+      "id": "permessi-fuoricorso",
+      "title": "Permessi e fuori corso",
+      "items": [
+        {
+          "id": "faq-3",
+          "q": "Posso chiedere un permesso prolungato?",
+          "a": "Sì. Invia richiesta formale alla segreteria con documentazione. La Direzione valuta e risponde via mail."
+        }
+      ]
+    }
+  ]
+}

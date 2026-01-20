@@ -63,6 +63,13 @@ class NotificationSettingsViewModel @Inject constructor(
     }
     
     /**
+     * Force resync all topics - can be called manually to fix sync issues
+     */
+    fun forceResyncTopics() {
+        updateFCMTopics()
+    }
+    
+    /**
      * Re-update FCM topics when preferences change
      */
     private fun updateFCMTopics() {

@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.laba.firenze.domain.model.Seminario
-import com.laba.firenze.ui.theme.LABA_Blue
 import com.laba.firenze.ui.common.prettifyTitle
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,6 +33,11 @@ fun SeminarsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val keyboardController = LocalSoftwareKeyboardController.current
+    
+    // Track section visit
+    LaunchedEffect(Unit) {
+        viewModel.trackSectionVisit("seminari")
+    }
     
     Column(
         modifier = Modifier
@@ -91,8 +95,8 @@ fun SeminarsScreen(
                         .weight(1f)
                         .clip(RoundedCornerShape(20.dp)),
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = LABA_Blue,
-                        selectedLabelColor = Color.White,
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
                         containerColor = Color.Transparent
                     ),
                     shape = RoundedCornerShape(20.dp)
@@ -121,7 +125,7 @@ fun SeminarsScreen(
                             SeminarCard(
                                 seminar = seminar,
                                 onClick = { 
-                                    // Seminari non cliccabili per ora
+                                    navController.navigate("seminar-detail/${seminar.oid}")
                                 }
                             )
                         }
@@ -226,13 +230,13 @@ private fun SeminarCard(
 @Composable
 private fun BookablePill() {
     Surface(
-        color = LABA_Blue,
+        color = MaterialTheme.colorScheme.primary,
         shape = MaterialTheme.shapes.small
     ) {
         Text(
             text = "Prenotabile",
             style = MaterialTheme.typography.labelSmall,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
         )
     }

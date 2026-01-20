@@ -5,6 +5,13 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -37,10 +44,15 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.laba.firenze.domain.model.Esame
+import com.laba.firenze.data.repository.SessionRepository
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
+import android.content.SharedPreferences
 import kotlin.math.*
 import kotlin.random.Random
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.ui.unit.Dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,9 +66,27 @@ fun HomeScreen(
         viewModel.refreshOnAppear() 
     }
     
+    val density = LocalDensity.current
+    
+    // Calcola padding dinamico per rispettare status bar, notch e cutout
+    val statusBarPadding = with(density) {
+        WindowInsets.statusBars.getTop(this).toDp()
+    }
+    val displayCutoutPadding = with(density) {
+        WindowInsets.displayCutout.getTop(this).toDp()
+    }
+    
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 36.dp, bottom = 100.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.statusBars.only(WindowInsetsSides.Top))
+            .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Top)),
+        contentPadding = PaddingValues(
+            start = 20.dp, 
+            end = 20.dp, 
+            top = maxOf(36.dp, statusBarPadding + displayCutoutPadding + 16.dp), // Rispetta notch/cutout
+            bottom = 100.dp
+        ),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
                 // HERO SECTION
@@ -89,6 +119,21 @@ fun HomeScreen(
             )
         }
         
+        // ESAMI PRENOTATI (solo se non laureato e ha currentYear, identico a iOS)
+        val profile = viewModel.getUserProfile()
+        val exams = uiState.bookedExams
+        val allExams = viewModel.getAllExams()
+        val shouldShowBooked = viewModel.shouldShowBookedExams(profile, allExams)
+        
+        if (!uiState.isGraduated && profile?.currentYear != null && shouldShowBooked && exams.isNotEmpty()) {
+            item {
+                BookedExamsSection(
+                    exams = exams.take(3), // Mostra solo i primi 3
+                    onNavigateToAll = { navController.navigate("esami-prenotati") }
+                )
+            }
+        }
+        
         // LESSONS TODAY (sempre presente, come iOS)
         item {
             LessonsTodayCard(lessons = uiState.lessonsToday)
@@ -102,15 +147,28 @@ fun HomeScreen(
             }
         }
         
-        // PER TE SECTION
+        // PER TE SECTION (come iOS)
         item {
             PerTeSection(
+                viewModel = viewModel,
                 onNavigate = { route -> 
                     when (route) {
                         "Voto di laurea" -> navController.navigate("calcola-voto-laurea")
                         "Simula la tua media" -> navController.navigate("simula-media")
-                        "Strumentazione" -> navController.navigate("strumentazione")
+                    }
+                }
+            )
+        }
+        
+        // SERVIZI SECTION (separata, come iOS)
+        item {
+            ServiziSection(
+                onNavigate = { route ->
+                    when (route) {
+                        "Service LABA" -> navController.navigate("service-laba")
                         "Prenotazione Aule" -> navController.navigate("prenotazione-aule")
+                        "Biblioteca" -> navController.navigate("biblioteca")
+                        "Servizi" -> navController.navigate("servizi")
                     }
                 }
             )
@@ -883,66 +941,320 @@ private fun UpcomingExamsCard(count: Int) {
     }
 }
 
-// MARK: - Per Te Section
+// MARK: - Per Te Section (come iOS - solo Voto di laurea e Simula media)
 @Composable
-private fun PerTeSection(onNavigate: (String) -> Unit) {
-    val shortcuts = listOf(
-        Icons.Rounded.School to "Voto di laurea",
-        Icons.Rounded.Analytics to "Simula la tua media",
-        Icons.Rounded.Videocam to "Strumentazione",
-        Icons.Rounded.MeetingRoom to "Prenotazione Aule"
-    )
+private fun PerTeSection(
+    viewModel: HomeViewModel,
+    onNavigate: (String) -> Unit
+) {
+    val profile = viewModel.getUserProfile()
+    val allExams = viewModel.getAllExams()
+    val isGraduated = profile?.status?.lowercase()?.contains("laureat") == true
+    val hasCompletedAllExams = viewModel.hasCompletedAllGraduationExams()
+    val currentYear = profile?.currentYear?.toIntOrNull()
+    val canAccessGraduationGrade = isGraduated || hasCompletedAllExams || currentYear == 3
+    
+    var showGraduationGradeAlert by remember { mutableStateOf(false) }
     
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Header
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Icon(
+                Icons.Default.AutoAwesome,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
             Text("Per te", style = MaterialTheme.typography.titleMedium)
         }
         
-        // Card separate per ogni shortcut
-        shortcuts.forEach { (icon, label) ->
-            Card(
+        // Voto di laurea (con accesso condizionale)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { 
+                    if (canAccessGraduationGrade) {
+                        onNavigate("Voto di laurea")
+                    } else {
+                        showGraduationGradeAlert = true
+                    }
+                },
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onNavigate(label) },
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                ),
-                shape = RoundedCornerShape(16.dp)
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
                     Icon(
-                        imageVector = Icons.Default.ChevronRight,
+                        imageVector = Icons.Default.School,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (canAccessGraduationGrade) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Voto di laurea",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = if (canAccessGraduationGrade) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        
+        // Simula la tua media
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onNavigate("Simula la tua media") },
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.TrendingUp,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Simula la tua media",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+    
+    // Alert per sezione non disponibile
+    if (showGraduationGradeAlert) {
+        AlertDialog(
+            onDismissRequest = { showGraduationGradeAlert = false },
+            title = { Text("Sezione non disponibile") },
+            text = {
+                Text(
+                    "Il calcolo del voto di laurea sarà disponibile appena avrai completato tutti gli esami del tuo piano di studi. Continua con gli ultimi passi e torna qui per prepararti alla discussione!"
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showGraduationGradeAlert = false }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+}
+
+// MARK: - Servizi Section (separata, come iOS)
+@Composable
+private fun ServiziSection(onNavigate: (String) -> Unit) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Header
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                Icons.Default.TabletMac,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Text("Servizi", style = MaterialTheme.typography.titleMedium)
+        }
+        
+        // Service LABA
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onNavigate("Service LABA") },
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Camera,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Service LABA",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        
+        // Prenotazione Aule
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onNavigate("Prenotazione Aule") },
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MeetingRoom,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Prenotazione Aule",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        
+        // Biblioteca
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onNavigate("Biblioteca") },
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Book,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Biblioteca",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        
+        // Servizi (gestione funzionalità)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onNavigate("Servizi") },
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Gestione servizi",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -1131,6 +1443,215 @@ private fun DrawScope.drawRipplePatternHero(size: Size, time: Float) {
                 )
             }
         }
+    }
+}
+
+// MARK: - Booked Exams Section (identica a iOS)
+@Composable
+private fun BookedExamsSection(
+    exams: List<Esame>,
+    onNavigateToAll: () -> Unit
+) {
+    val pastelRed = Color(0xFFFF3B30) // Rosso vivace identico a iOS
+    
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Header rosso pastello
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CalendarMonth,
+                    contentDescription = null,
+                    tint = pastelRed
+                )
+                Text(
+                    text = "Prossimi esami",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = pastelRed
+                )
+            }
+            
+            // Lista esami (massimo 3)
+            exams.forEachIndexed { index, exam ->
+                BookedExamRow(exam = exam, number = index + 1)
+                if (index < exams.size - 1) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                    )
+                }
+            }
+            
+            // Pulsante per vedere tutti gli esami prenotati
+            TextButton(
+                onClick = onNavigateToAll,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CalendarMonth,
+                        contentDescription = null,
+                        tint = pastelRed,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Vedi esami prenotati",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = pastelRed
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = pastelRed.copy(alpha = 0.6f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BookedExamRow(
+    exam: Esame,
+    number: Int
+) {
+    val pastelRed = Color(0xFFFF3B30) // Rosso vivace identico a iOS
+    
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Numero in cerchio rosso pastello
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(pastelRed),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = number.toString(),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White
+            )
+        }
+        
+        // Info esame
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = prettifyTitle(exam.corso),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium
+            )
+            
+            exam.docente?.let { docente ->
+                if (docente.isNotEmpty()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = surnamesOnly(docente),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            
+            exam.dataRichiesta?.let { dataRichiesta ->
+                val formattedDate = remember(dataRichiesta) {
+                    try {
+                        val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+                        val date = dateFormat.parse(dataRichiesta)
+                        if (date != null) {
+                            val outputFormat = SimpleDateFormat("dd/MM/yyyy", Locale.ITALIAN)
+                            outputFormat.format(date)
+                        } else {
+                            null
+                        }
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+                
+                formattedDate?.let { formatted ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(top = 2.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarToday,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Prenotato il $formatted",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Helper: formatta il titolo in proper case (identico a iOS prettifyTitle)
+ */
+private fun prettifyTitle(title: String): String {
+    return title.replace("_", " ")
+        .split(" ")
+        .joinToString(" ") { word ->
+            word.lowercase().replaceFirstChar { 
+                if (it.isLowerCase()) it.titlecase() else it.toString() 
+            }
+        }
+}
+
+/**
+ * Helper: estrae solo i cognomi dal nome del docente (identico a iOS surnamesOnly)
+ */
+private fun surnamesOnly(docente: String): String {
+    val parts = docente.split("/").firstOrNull()?.trim() ?: docente
+    val components = parts.split(" ").filter { it.isNotEmpty() }
+    return when {
+        components.size >= 2 -> components.drop(1).joinToString(" ") // Tutti tranne il primo
+        else -> parts
     }
 }
 

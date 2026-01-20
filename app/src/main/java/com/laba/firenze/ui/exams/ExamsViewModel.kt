@@ -12,7 +12,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ExamsViewModel @Inject constructor(
-    private val sessionRepository: SessionRepository
+    private val sessionRepository: SessionRepository,
+    private val achievementManager: com.laba.firenze.data.gamification.AchievementManager
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(ExamsUiState())
@@ -20,6 +21,10 @@ class ExamsViewModel @Inject constructor(
     
     // Expose exams directly for the new ExamsScreen
     val exams: StateFlow<List<Esame>> = sessionRepository.allExams
+    
+    fun trackSectionVisit(section: String) {
+        achievementManager.trackSectionVisit(section)
+    }
     
     init {
         loadExams()

@@ -1,12 +1,17 @@
 package com.laba.firenze.ui
 
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -17,6 +22,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.laba.firenze.R
 import com.laba.firenze.ui.common.AppLoadingScreen
@@ -28,6 +36,7 @@ import com.laba.firenze.ui.documents.DispenseScreen
 import com.laba.firenze.ui.documents.DocumentViewerScreen
 import com.laba.firenze.ui.exams.ExamsScreen
 import com.laba.firenze.ui.exams.ExamDetailScreen
+import com.laba.firenze.ui.exams.BookedExamsScreen
 import com.laba.firenze.ui.home.HomeScreen
 import com.laba.firenze.ui.perte.*
 import com.laba.firenze.ui.profile.ProfileScreen
@@ -35,9 +44,22 @@ import com.laba.firenze.ui.thesis.ThesisScreen
 import com.laba.firenze.ui.thesis.PergamenaScreen
 import com.laba.firenze.ui.regolamenti.RegolamentiScreen
 import com.laba.firenze.ui.seminars.SeminarsScreen
+import com.laba.firenze.ui.seminars.SeminarDetailScreen
 import com.laba.firenze.ui.notifications.NotificationSettingsScreen
 import com.laba.firenze.ui.notifications.InboxNotificationsScreen
 import com.laba.firenze.ui.appearance.AppearanceSettingsScreen
+import com.laba.firenze.ui.benefits.AgevolazioniScreen
+import com.laba.firenze.ui.profile.StudentCardScreen
+import com.laba.firenze.ui.profile.ServiziScreen
+import com.laba.firenze.ui.profile.AnagraficaScreen
+import com.laba.firenze.ui.library.BibliotecaScreen
+import com.laba.firenze.ui.guides.WiFiLABAScreen
+import com.laba.firenze.ui.guides.StudentServerGuideScreen
+import com.laba.firenze.ui.guides.PrinterGuideScreen
+import com.laba.firenze.ui.gamification.AchievementsScreen
+import com.laba.firenze.ui.gamification.AchievementUnlockedToast
+import com.laba.firenze.ui.gamification.AchievementDetailDialog
+import com.laba.firenze.domain.model.Achievement
 
 sealed class LABANavigation(val route: String, val icon: ImageVector, val title: String) {
     object Home : LABANavigation("home", Icons.Default.Home, "Home")
@@ -45,23 +67,26 @@ sealed class LABANavigation(val route: String, val icon: ImageVector, val title:
     object Courses : LABANavigation("courses", Icons.Default.School, "Corsi")
     object Seminars : LABANavigation("seminars", Icons.Default.Event, "Seminari")
     object Profile : LABANavigation("profile", Icons.Default.Person, "Profilo")
+    object Benefits : LABANavigation("benefits", Icons.Default.Loyalty, "Convenzioni")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LABANavigation(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    navigationViewModel: com.laba.firenze.ui.navigation.NavigationViewModel = hiltViewModel()
 ) {
     val navController = rememberNavController()
+    val activeTabs by navigationViewModel.activeTabs.collectAsState()
     
-    val items = listOf(
-        LABANavigation.Home,
-        LABANavigation.Exams,
-        LABANavigation.Courses,
-        LABANavigation.Seminars,
-        LABANavigation.Profile
-    )
-
+    // Achievement Unlocked Toast Banner (global) - shown in all screens
+    val achievementManagerViewModel: com.laba.firenze.ui.gamification.AchievementsViewModel = hiltViewModel()
+    val recentlyUnlocked by achievementManagerViewModel.recentlyUnlocked.collectAsStateWithLifecycle()
+    val stats by achievementManagerViewModel.stats.collectAsStateWithLifecycle()
+    var selectedAchievement by remember { 
+        mutableStateOf<Achievement?>(null) 
+    }
+    
     Scaffold(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
@@ -69,51 +94,43 @@ fun LABANavigation(
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
                 
-                items.forEach { screen ->
-                    val isSelected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                activeTabs.forEach { tab ->
+                    val isSelected = currentDestination?.hierarchy?.any { it.route == tab.route } == true
                     NavigationBarItem(
                         icon = { 
                             Icon(
-                                screen.icon, 
-                                contentDescription = screen.title,
+                                tab.icon, 
+                                contentDescription = tab.title,
                                 tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                             ) 
                         },
                         label = { 
                             Text(
-                                screen.title,
+                                tab.title,
                                 color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
                         selected = isSelected,
                         onClick = {
-                            // Se sei già nella sezione principale, non fare niente
-                            if (currentDestination?.route == screen.route) {
+                            if (currentDestination?.route == tab.route) {
                                 return@NavigationBarItem
                             }
                             
-                            // Se sei in una sottosezione della stessa sezione, torna alla principale
-                            val isInSubsection = currentDestination?.route?.startsWith(screen.route + "/") == true
+                            val isInSubsection = currentDestination?.route?.startsWith(tab.route + "/") == true
                             if (isInSubsection) {
-                                navController.navigate(screen.route) {
-                                    popUpTo(screen.route) {
+                                navController.navigate(tab.route) {
+                                    popUpTo(tab.route) {
                                         inclusive = false
                                     }
                                 }
                                 return@NavigationBarItem
                             }
                             
-                            // Altrimenti naviga normalmente alla sezione
-                            navController.navigate(screen.route) {
-                                // Pop up to the start destination of the graph to
-                                // avoid building up a large stack of destinations
+                            navController.navigate(tab.route) {
                                 popUpTo(navController.graph.findStartDestination().id) {
                                     saveState = true
                                 }
-                                // Avoid multiple copies of the same destination when
-                                // reselecting the same item
                                 launchSingleTop = true
-                                // Restore state when reselecting a previously selected item
                                 restoreState = true
                             }
                         }
@@ -121,33 +138,92 @@ fun LABANavigation(
                 }
             }
         }
-    ) { _ -> // innerPadding non utilizzato
-        NavHost(
-            navController = navController,
-            startDestination = LABANavigation.Home.route,
-            modifier = Modifier.fillMaxSize()
+    ) { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            NavHost(
+                navController = navController,
+                startDestination = LABANavigation.Home.route,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .windowInsetsPadding(WindowInsets.systemBars),
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300)) },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300)) },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) }
         ) {
-            composable(LABANavigation.Home.route) {
+            composable(
+                route = LABANavigation.Home.route,
+                enterTransition = { fadeIn(animationSpec = tween(200)) },
+                exitTransition = { fadeOut(animationSpec = tween(200)) }
+            ) {
                 HomeScreen(navController)
             }
-            composable(LABANavigation.Exams.route) {
+            composable(
+                route = LABANavigation.Exams.route,
+                enterTransition = { fadeIn(animationSpec = tween(200)) },
+                exitTransition = { fadeOut(animationSpec = tween(200)) }
+            ) {
                 ExamsScreen(navController)
             }
-            composable("exam_detail/{examId}") { backStackEntry ->
+            composable(
+                route = "exam_detail/{examId}",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 4 }, animationSpec = tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 4 }, animationSpec = tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) }
+            ) { backStackEntry ->
                 val examId = backStackEntry.arguments?.getString("examId") ?: ""
                 ExamDetailScreen(examId, navController)
             }
-            composable(LABANavigation.Courses.route) {
+            composable(
+                route = "esami-prenotati",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 4 }, animationSpec = tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 4 }, animationSpec = tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) }
+            ) {
+                BookedExamsScreen(navController)
+            }
+            composable(
+                route = LABANavigation.Courses.route,
+                enterTransition = { fadeIn(animationSpec = tween(200)) },
+                exitTransition = { fadeOut(animationSpec = tween(200)) }
+            ) {
                 CoursesScreen(navController)
             }
-            composable("course_detail/{courseId}") { backStackEntry ->
+            composable(
+                route = "course_detail/{courseId}",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 4 }, animationSpec = tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 4 }, animationSpec = tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) }
+            ) { backStackEntry ->
                 val courseId = backStackEntry.arguments?.getString("courseId") ?: ""
                 CourseDetailScreen(navController, courseId)
             }
-            composable(LABANavigation.Seminars.route) {
+            composable(
+                route = LABANavigation.Seminars.route,
+                enterTransition = { fadeIn(animationSpec = tween(200)) },
+                exitTransition = { fadeOut(animationSpec = tween(200)) }
+            ) {
                 SeminarsScreen(navController)
             }
-            composable(LABANavigation.Profile.route) {
+            composable(
+                route = "seminar-detail/{seminarId}",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 4 }, animationSpec = tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 4 }, animationSpec = tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) }
+            ) { backStackEntry ->
+                val seminarId = backStackEntry.arguments?.getString("seminarId") ?: ""
+                SeminarDetailScreen(navController, seminarId)
+            }
+            composable(
+                route = LABANavigation.Profile.route,
+                enterTransition = { fadeIn(animationSpec = tween(200)) },
+                exitTransition = { fadeOut(animationSpec = tween(200)) }
+            ) {
                 ProfileScreen(navController)
             }
             
@@ -207,6 +283,91 @@ fun LABANavigation(
             composable("appearance") {
                 AppearanceSettingsScreen(navController)
             }
+            
+            composable("color_settings") {
+                com.laba.firenze.ui.appearance.ColorSettingsScreen(navController)
+            }
+            
+            composable("animation_settings") {
+                com.laba.firenze.ui.appearance.AnimationSettingsScreen(navController)
+            }
+            
+            composable("navigation_customization") {
+                com.laba.firenze.ui.appearance.NavigationCustomizationScreen(navController, navigationViewModel.navigationManager)
+            }
+
+            // New Features
+            composable(LABANavigation.Benefits.route) {
+                AgevolazioniScreen(navController)
+            }
+            composable("student_card") {
+                StudentCardScreen(navController)
+            }
+            composable("achievements") {
+                AchievementsScreen(navController = navController)
+            }
+            composable("group_selection") {
+                com.laba.firenze.ui.profile.GroupSelectionScreen(navController = navController)
+            }
+            composable("servizi") {
+                ServiziScreen(navController)
+            }
+            composable("faq") {
+                com.laba.firenze.ui.faq.FAQScreen(navController)
+            }
+            composable("privacy-security") {
+                com.laba.firenze.ui.profile.PrivacySecurityScreen(navController)
+            }
+            composable("debug") {
+                com.laba.firenze.ui.profile.DebugScreen(navController)
+            }
+            
+            // Anagrafica
+            composable("anagrafica") {
+                AnagraficaScreen(navController)
+            }
+            
+            // Biblioteca
+            composable("biblioteca") {
+                BibliotecaScreen(navController)
+            }
+            
+            // Guide
+            composable("wifi-laba") {
+                WiFiLABAScreen(navController)
+            }
+            composable("student-server-guide") {
+                StudentServerGuideScreen(navController)
+            }
+            composable("printer-guide") {
+                PrinterGuideScreen(navController)
+            }
+        }
+        
+        // Global Achievement Unlocked Toast Banner (shown in all screens)
+        recentlyUnlocked?.let { achievement ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentAlignment = Alignment.TopCenter
+            ) {
+                AchievementUnlockedToast(
+                    achievement = achievement,
+                    onDismiss = { achievementManagerViewModel.dismissUnlockedToast() },
+                    onClick = { selectedAchievement = achievement }
+                )
+            }
+        }
+        
+        // Achievement Detail Dialog (global)
+        selectedAchievement?.let { achievement ->
+            AchievementDetailDialog(
+                achievement = achievement,
+                onDismiss = { selectedAchievement = null },
+                stats = stats
+            )
+        }
         }
     }
 }

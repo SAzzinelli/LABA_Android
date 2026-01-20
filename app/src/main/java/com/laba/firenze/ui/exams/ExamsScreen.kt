@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -42,6 +43,11 @@ fun ExamsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val exams by viewModel.exams.collectAsState()
+    
+    // Track section visit
+    LaunchedEffect(Unit) {
+        viewModel.trackSectionVisit("exams")
+    }
     
     var selectedYear by remember { mutableIntStateOf(1) }
     var statusFilter by remember { mutableStateOf(StatusFilter.ALL) }
@@ -162,11 +168,11 @@ fun ExamsScreen(
         )
         
         // Year Filter (come in Corsi)
-        Row(
+        LazyRow(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            years.forEach { year ->
+            items(years) { year ->
                 FilterChip(
                     onClick = { selectedYear = year },
                     label = { 

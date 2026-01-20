@@ -18,10 +18,69 @@ class TopicManager @Inject constructor(
     companion object {
         private const val TAG = "TopicManager"
         private const val PREFS_NAME = "notification_prefs"
+        private const val SUBSCRIBED_TOPICS_KEY = "subscribed_topics" // Lista topic effettivamente iscritti
     }
     
     private val prefs: SharedPreferences by lazy {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
+    
+    /**
+     * Save the list of currently subscribed topics
+     */
+    private fun saveSubscribedTopics(topics: List<String>) {
+        prefs.edit().putStringSet(SUBSCRIBED_TOPICS_KEY, topics.toSet()).apply()
+        Log.d(TAG, "Saved ${topics.size} subscribed topics")
+    }
+    
+    /**
+     * Get the list of currently subscribed topics
+     */
+    fun getSubscribedTopics(): Set<String> {
+        return prefs.getStringSet(SUBSCRIBED_TOPICS_KEY, emptySet()) ?: emptySet()
+    }
+    
+    /**
+     * Get the list of topics that SHOULD be subscribed based on current preferences
+     * This is used to show "Topic Salvati" (saved preferences) vs "iscritto ai topic" (actual FCM subscriptions)
+     */
+    fun getTopicsBasedOnPreferences(course: String?, currentYear: Int?, isGraduated: Boolean): Set<String> {
+        val allCategories = NotificationCategory.values().toSet()
+        val enabledCategories = allCategories.filter { isCategoryEnabled(it) }
+        
+        val savedTopics = mutableSetOf<String>()
+        
+        course?.let {
+            val courseCode = getCourseCode(it)
+            if (courseCode != null) {
+                // Add course-specific topics for all enabled categories
+                enabledCategories.forEach { category ->
+                    savedTopics.add("${courseCode}_${category.topicSuffix}")
+                }
+                
+                // Add year-specific topics
+                val year = currentYear?.let { maxOf(1, minOf(3, it)) }
+                year?.let { y ->
+                    enabledCategories.forEach { category ->
+                        savedTopics.add("${courseCode}_${y}_${category.topicSuffix}")
+                    }
+                }
+            }
+        }
+        
+        // Add global topics
+        savedTopics.add("tutti")
+        if (isGraduated) {
+            savedTopics.add("laureato")
+            course?.let { 
+                val courseCode = getCourseCode(it)
+                courseCode?.let { cc ->
+                    savedTopics.add("laureato_$cc")
+                }
+            }
+        }
+        
+        return savedTopics
     }
     
     /**
@@ -64,29 +123,49 @@ class TopicManager @Inject constructor(
     ) {
         scope.launch {
             try {
+                // Get old subscribed topics
+                val oldSubscribedTopics = getSubscribedTopics().toMutableSet()
+                
+                // Generate new topics
                 val topics = generateTopics(course, currentYear, isGraduated, isDocente)
                 
+                // Build the complete list of topics to subscribe to
+                val topicsToSubscribe = mutableListOf<String>()
+                
                 // Subscribe to "tutti" topic (all users)
-                notificationManager.subscribeToTopics(listOf("tutti"))
+                topicsToSubscribe.add("tutti")
                 
-                // Subscribe to user-specific topics
-                if (topics.isNotEmpty()) {
-                    notificationManager.subscribeToTopics(topics)
-                    Log.d(TAG, "Subscribed to topics: $topics")
-                }
+                // Add user-specific topics
+                topicsToSubscribe.addAll(topics)
                 
-                // If graduated, subscribe to "laureato" topic
+                // If graduated, add laureato topics
                 if (isGraduated) {
-                    notificationManager.subscribeToTopics(listOf("laureato"))
-                    
-                    // Also subscribe to course-specific laureato topic
+                    topicsToSubscribe.add("laureato")
                     course?.let { 
                         val courseCode = getCourseCode(it)
                         if (courseCode != null) {
-                            notificationManager.subscribeToTopics(listOf("laureato_$courseCode"))
+                            topicsToSubscribe.add("laureato_$courseCode")
                         }
                     }
                 }
+                
+                // Deduplicate
+                val newSubscribedTopics = topicsToSubscribe.distinct()
+                
+                // Unsubscribe from old topics that are no longer needed
+                val topicsToUnsubscribe = oldSubscribedTopics - newSubscribedTopics.toSet()
+                if (topicsToUnsubscribe.isNotEmpty()) {
+                    notificationManager.unsubscribeFromTopics(topicsToUnsubscribe.toList())
+                    Log.d(TAG, "Unsubscribed from old topics: $topicsToUnsubscribe")
+                }
+                
+                // Subscribe to new topics
+                notificationManager.subscribeToTopics(newSubscribedTopics)
+                Log.d(TAG, "Subscribed to topics: $newSubscribedTopics")
+                
+                // Save the new subscribed topics
+                saveSubscribedTopics(newSubscribedTopics)
+                
             } catch (e: Exception) {
                 Log.e(TAG, "Error updating topics", e)
             }
@@ -145,4 +224,5 @@ class TopicManager @Inject constructor(
         Log.d(TAG, "TopicManager initialized")
     }
 }
+
 

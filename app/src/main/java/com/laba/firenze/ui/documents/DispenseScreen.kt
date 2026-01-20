@@ -235,6 +235,8 @@ fun DispenseScreen(
                                     document = doc,
                                     onClick = {
                                         try {
+                                            // Track achievement
+                                            viewModel.trackDispenseOpen(doc.oid)
                                             val title = if (!doc.descrizione.isNullOrBlank()) {
                                                 doc.descrizione!!
                                             } else {

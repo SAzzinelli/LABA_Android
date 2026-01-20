@@ -12,7 +12,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SeminarsViewModel @Inject constructor(
-    private val sessionRepository: SessionRepository
+    private val sessionRepository: SessionRepository,
+    private val achievementManager: com.laba.firenze.data.gamification.AchievementManager
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(SeminarsUiState())
@@ -20,6 +21,10 @@ class SeminarsViewModel @Inject constructor(
     
     init {
         loadSeminars()
+    }
+    
+    fun trackSectionVisit(section: String) {
+        achievementManager.trackSectionVisit(section)
     }
     
     private fun loadSeminars() {
@@ -88,6 +93,10 @@ class SeminarsViewModel @Inject constructor(
         viewModelScope.launch {
             sessionRepository.loadSeminars()
         }
+    }
+    
+    fun getSeminarById(seminarId: String): Seminario? {
+        return _uiState.value.allSeminars.find { it.oid == seminarId }
     }
 }
 

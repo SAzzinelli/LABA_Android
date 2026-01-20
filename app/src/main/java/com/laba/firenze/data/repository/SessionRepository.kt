@@ -392,7 +392,9 @@ class SessionRepository @Inject constructor(
                         propedeutico = payload.propedeutico,
                         data = payload.sostenutoIl,  // sostenutoIl dal payload va in data
                         voto = payload.voto,
-                        richiedibile = (payload.richiedibile ?: "N").uppercase() == "S"
+                        richiedibile = (payload.richiedibile ?: "N").uppercase() == "S",
+                        dataRichiesta = payload.dataRichiesta,  // Aggiunto: data prenotazione
+                        esitoRichiesta = payload.esitoRichiesta  // Aggiunto: esito richiesta
                     )
                 } ?: emptyList()
                 

@@ -21,17 +21,23 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.compose.material3.TopAppBar
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegolamentiScreen(
-    navController: NavController
+    navController: NavController,
+    viewModel: RegolamentiViewModel = hiltViewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
     val context = LocalContext.current
 
     // Funzione per aprire PDF nel browser
-    fun openPDF(url: String) {
+    fun openPDF(url: String, regolamentoId: String? = null) {
+        // Track achievement when reading regulation
+        regolamentoId?.let { id ->
+            viewModel.achievementManager.trackRegolamentoRead(id)
+        }
         try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -219,7 +225,14 @@ fun RegolamentiScreen(
 
             // Documents by Category
             items(groupedDocuments) { section ->
-                RegolamentoSectionView(section = section, onDocumentClick = ::openPDF)
+                RegolamentoSectionView(
+                    section = section,
+                    onDocumentClick = { url ->
+                        // Extract regolamento ID from URL (use URL as ID for now)
+                        val regolamentoId = url.substringAfterLast("/").substringBefore(".")
+                        openPDF(url, regolamentoId)
+                    }
+                )
             }
         }
     }

@@ -12,6 +12,7 @@ data class LessonEvent(
     val docente: String? = null,
     val start: Date,
     val end: Date,
-    val note: String? = null
+    val note: String? = null,
+    val gruppo: String? = null
 )
 

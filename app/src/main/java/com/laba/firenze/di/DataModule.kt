@@ -30,5 +30,14 @@ object DataModule {
     ): LessonCalendarRepository {
         return LessonCalendarRepository(context)
     }
+
+    @Provides
+    @Singleton
+    fun provideAchievementManager(
+        @ApplicationContext context: Context,
+        supabaseRepository: com.laba.firenze.data.repository.SupabaseRepository
+    ): com.laba.firenze.data.gamification.AchievementManager {
+        return com.laba.firenze.data.gamification.AchievementManager(context, supabaseRepository)
+    }
 }
 

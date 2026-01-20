@@ -9,6 +9,8 @@ import com.laba.firenze.domain.model.Esame
 import com.laba.firenze.domain.model.LessonEvent
 import com.laba.firenze.domain.model.StudentProfile
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,8 +38,74 @@ data class HeroInfo(
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val sessionRepository: SessionRepository,
-    private val lessonCalendarRepository: LessonCalendarRepository
+    private val lessonCalendarRepository: LessonCalendarRepository,
+    private val appearancePreferences: com.laba.firenze.data.local.AppearancePreferences,
+    private val achievementManager: com.laba.firenze.data.gamification.AchievementManager,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
+    
+    // ... (rest of code)
+    
+
+    private fun getTodaysLessonsForUser(profile: StudentProfile?, exams: List<Esame>): List<LessonUi> {
+        val allEvents = lessonCalendarRepository.events.value
+        val calendar = java.util.Calendar.getInstance()
+        val now = Date()
+        val selectedGroup = appearancePreferences.getSelectedGroup()
+        
+        // Filtra lezioni di oggi e domani
+        val todayStart = calendar.time
+        calendar.add(java.util.Calendar.DAY_OF_MONTH, 2)
+        val tomorrowEnd = calendar.time
+        
+        val relevantLessons = allEvents.filter { event ->
+            event.start >= todayStart && event.start < tomorrowEnd
+        }
+        
+        // Filtra per corsi dell'utente
+        val userCourseIds = exams.mapNotNull { exam ->
+             getCourseIdFromExam(exam)
+        }.toSet()
+        
+        val userLessons = relevantLessons.filter { event ->
+            // 1. Check Group Filter
+            val eventGroup = event.gruppo
+            val matchesGroup = if (selectedGroup != null && !eventGroup.isNullOrBlank()) {
+                eventGroup.equals(selectedGroup, ignoreCase = true)
+            } else {
+                true // No group selected OR event has no group -> show it
+            }
+            
+            if (!matchesGroup) return@filter false
+            
+            // 2. Check Course Match
+            // Match per oidCorso singolo
+            event.oidCorso?.lowercase()?.let { oid ->
+                userCourseIds.contains(oid)
+            } ?: false || 
+            // Match per oidCorsi multipli
+            event.oidCorsi?.any { oid ->
+                userCourseIds.contains(oid.lowercase())
+            } == true ||
+            // Match per nome corso normalizzato
+            normalizeCourse(event.corso).let { normalized ->
+                userCourseIds.any { it.contains(normalized.lowercase()) || normalized.lowercase().contains(it) }
+            }
+        }
+        
+        // Converti in LessonUi
+        return userLessons.map { event ->
+             // ...
+             // (Using existing logic)
+             LessonUi(
+                title = event.corso,
+                time = formatTimeRange(event.start, event.end),
+                room = event.aula,
+                teacher = if (event.gruppo != null) "${event.docente ?: ""} (Gr. ${event.gruppo})" else event.docente, // Show group in teacher field if exists
+                date = formatDate(event.start)
+            )
+        }
+    }
     
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -52,12 +120,44 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             // Carica tutti i dati e aspetta il completamento
             sessionRepository.loadAll()
+            
+            // Track achievements
+            achievementManager.trackDataLoad()
+            achievementManager.trackLogin()
+            
+            // Track section visit
+            achievementManager.trackSectionVisit("home")
+            
             // Sync lessons
-            lessonCalendarRepository.syncFromURL(force = true)
+            val profile = sessionRepository.getUserProfileFlow().value
+            val pianoStudi = profile?.pianoStudi
+            val currentYear = profile?.currentYear?.toIntOrNull()
+            lessonCalendarRepository.syncLessons(pianoStudi, currentYear, force = true)
+            
+            // Update achievements from session data
+            val exams = sessionRepository.allExams.value
+            val seminars = sessionRepository.seminars.value
+            achievementManager.updateAchievements(exams, seminars, profile)
+            
             // Forza il refresh dei dati
             loadData()
         }
     }
+    
+    /**
+     * Ottiene il profilo utente corrente
+     */
+    fun getUserProfile() = sessionRepository.getUserProfile()
+    
+    /**
+     * Ottiene tutti gli esami
+     */
+    fun getAllExams() = sessionRepository.allExams.value
+    
+    /**
+     * Ottiene tutti i seminari
+     */
+    fun getAllSeminars() = sessionRepository.seminars.value
     
     // MARK: - Helper Functions
     
@@ -303,6 +403,9 @@ class HomeViewModel @Inject constructor(
                 
                 Log.d("HomeViewModel", "Calculated - Passed: $passedExamsCount, Missing: $missingExamsCount, CFA: $cfaEarned, Average: $careerAverage")
                 
+                // Calcola esami prenotati (identico a iOS)
+                val bookedExams = calculateBookedExams(exams, profile)
+                
                 _uiState.value = HomeUiState(
                     displayName = displayName,
                     statusPills = statusPills,
@@ -316,6 +419,7 @@ class HomeViewModel @Inject constructor(
                     careerAverage = careerAverage,
                     lessonsToday = lessonsToday,
                     upcomingExamsCount = upcomingExamsCount,
+                    bookedExams = bookedExams,
                     isLoading = isLoading
                 )
             }.collect { }
@@ -541,55 +645,7 @@ class HomeViewModel @Inject constructor(
     
     // MARK: - Lessons Filtering
     
-    /**
-     * Ottiene le lezioni di oggi e domani filtrate per l'utente
-     */
-    private fun getTodaysLessonsForUser(profile: StudentProfile?, exams: List<Esame>): List<LessonUi> {
-        val allEvents = lessonCalendarRepository.events.value
-        val calendar = java.util.Calendar.getInstance()
-        val now = Date()
-        
-        // Filtra lezioni di oggi e domani
-        val todayStart = calendar.time
-        calendar.add(java.util.Calendar.DAY_OF_MONTH, 2)
-        val tomorrowEnd = calendar.time
-        
-        val relevantLessons = allEvents.filter { event ->
-            event.start >= todayStart && event.start < tomorrowEnd
-        }
-        
-        // Filtra per corsi dell'utente
-        val userCourseIds = exams.mapNotNull { exam ->
-            // Estrai oidCorso dagli esami (uguale a iOS)
-            getCourseIdFromExam(exam)
-        }.toSet()
-        
-        val userLessons = relevantLessons.filter { event ->
-            // Match per oidCorso singolo
-            event.oidCorso?.lowercase()?.let { oid ->
-                userCourseIds.contains(oid)
-            } ?: false || 
-            // Match per oidCorsi multipli
-            event.oidCorsi?.any { oid ->
-                userCourseIds.contains(oid.lowercase())
-            } == true ||
-            // Match per nome corso normalizzato
-            normalizeCourse(event.corso).let { normalized ->
-                userCourseIds.any { it.contains(normalized.lowercase()) || normalized.lowercase().contains(it) }
-            }
-        }
-        
-        // Converti in LessonUi
-        return userLessons.map { event ->
-            LessonUi(
-                title = event.corso,
-                time = formatTimeRange(event.start, event.end),
-                room = event.aula,
-                teacher = event.docente,
-                date = formatDate(event.start)
-            )
-        }
-    }
+
     
     private fun getCourseIdFromExam(exam: Esame): String? {
         // Prova a trovare oidCorso tramite reflection (come in iOS)
@@ -620,6 +676,123 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
+    
+    // MARK: - Booked Exams Logic (identica a iOS)
+    
+    /**
+     * Calcola gli esami prenotati (identico a iOS bookedExams computed property)
+     * Mostra solo esami con dataRichiesta != null e senza voto, escludendo attività e tesi
+     */
+    private fun calculateBookedExams(exams: List<Esame>, profile: StudentProfile?): List<Esame> {
+        val isGraduated = profile?.status?.lowercase()?.contains("laureat") == true
+        val currentYear = profile?.currentYear?.toIntOrNull()
+        
+        // Nascondi se laureato o fuoricorso (come iOS)
+        if (isGraduated || currentYear == null) {
+            return emptyList()
+        }
+        
+        return exams.filter { exam ->
+            // Deve avere dataRichiesta
+            exam.dataRichiesta != null &&
+            // Non deve avere voto (non ancora verbalizzato)
+            (exam.voto == null || exam.voto.isEmpty()) &&
+            // Escludi attività e tesi
+            !isAttivitaOTesi(exam)
+        }.sortedBy { exam ->
+            // Ordina per dataRichiesta (più vecchi primi)
+            try {
+                val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+                exam.dataRichiesta?.let { dateFormat.parse(it)?.time } ?: Long.MAX_VALUE
+            } catch (e: Exception) {
+                Long.MAX_VALUE
+            }
+        }
+    }
+    
+    /**
+     * Verifica se l'utente ha completato tutti gli esami per la laurea (identico a iOS hasCompletedAllGraduationExams)
+     */
+    fun hasCompletedAllGraduationExams(): Boolean {
+        val allExams = sessionRepository.allExams.value
+        if (allExams.isEmpty()) return false
+        
+        // Verifica se ci sono esami "pending for graduation" (come iOS)
+        return !allExams.any { exam ->
+            isPendingForGraduation(exam)
+        }
+    }
+    
+    /**
+     * Verifica se un esame è "pending for graduation" (identico a iOS isPendingForGraduation)
+     */
+    private fun isPendingForGraduation(exam: Esame): Boolean {
+        val loweredName = exam.corso.lowercase()
+        
+        // Escludi tesi e prova finale
+        if (loweredName.contains("tesi") || loweredName.contains("prova finale")) {
+            return false
+        }
+        
+        // Escludi attività, workshop, seminari
+        if (loweredName.contains("attivit") || loweredName.contains("workshop") || loweredName.contains("seminar")) {
+            return false
+        }
+        
+        // Se è richiedibile (non prenotato), è pending
+        if (exam.richiedibile == true) {
+            return true
+        }
+        
+        // Se ha voto, non è pending
+        val trimmedVote = (exam.voto ?: "").trim()
+        if (trimmedVote.isNotEmpty()) {
+            return false
+        }
+        
+        // Se è idoneità, non è pending
+        if (isIdoneitaVote(exam.voto)) {
+            return false
+        }
+        
+        // Se è sostenuto (ha data), non è pending
+        if (exam.data != null) {
+            return false
+        }
+        
+        // Altrimenti è pending
+        return true
+    }
+    
+    private fun isIdoneitaVote(voto: String?): Boolean {
+        val v = voto?.lowercase() ?: return false
+        return v.contains("idoneo") || v.contains("idonea") || v.contains("idoneità")
+    }
+    
+    /**
+     * Verifica se mostrare la sezione esami prenotati (identica a iOS shouldShowBookedExams)
+     */
+    fun shouldShowBookedExams(profile: StudentProfile?, exams: List<Esame>): Boolean {
+        // Verifica se l'utente ha disabilitato la sezione nelle impostazioni
+        // Default è true se la chiave non esiste ancora
+        val sharedPrefs = context.getSharedPreferences("LABA_PREFS", Context.MODE_PRIVATE)
+        val isEnabled = if (!sharedPrefs.contains("laba.bookedExams.enabled")) {
+            true // Default true se non esiste
+        } else {
+            sharedPrefs.getBoolean("laba.bookedExams.enabled", true)
+        }
+        
+        if (!isEnabled) return false
+        
+        // Nascondi se laureato o fuoricorso (come iOS)
+        val isGraduated = profile?.status?.lowercase()?.contains("laureat") == true
+        val currentYear = profile?.currentYear?.toIntOrNull()
+        if (isGraduated || currentYear == null) return false
+        
+        // Mostra solo se ci sono esami prenotati (con dataRichiesta) senza voto
+        val bookedExams = calculateBookedExams(exams, profile)
+        return bookedExams.isNotEmpty()
+    }
 }
 
 data class HomeUiState(
@@ -635,5 +808,6 @@ data class HomeUiState(
     val careerAverage: Double? = null,
     val lessonsToday: List<LessonUi> = emptyList(),
     val upcomingExamsCount: Int = 0,
+    val bookedExams: List<Esame> = emptyList(), // Esami prenotati
     val isLoading: Boolean = false
 )

@@ -10,7 +10,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val sessionRepository: SessionRepository
+    private val sessionRepository: SessionRepository,
+    private val achievementManager: com.laba.firenze.data.gamification.AchievementManager
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -30,6 +31,9 @@ class ProfileViewModel @Inject constructor(
         }
     }
     
+    fun trackSectionVisit(section: String) {
+        achievementManager.trackSectionVisit(section)
+    }
     
     fun refreshData() {
         viewModelScope.launch {
@@ -44,6 +48,7 @@ class ProfileViewModel @Inject constructor(
     fun logout() {
         viewModelScope.launch {
             sessionRepository.logout()
+            achievementManager.setUserEmail(null)
         }
     }
 }

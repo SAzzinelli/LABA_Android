@@ -4,10 +4,10 @@
     <selectionStates>
       <SelectionState runConfigName="LABA Firenze">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2025-09-24T08:40:21.141381Z">
+        <DropdownSelection timestamp="2026-01-07T08:31:50.064647Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="PhysicalDevice" identifier="serial=KBFQMNMJNFRK7TTC" />
+              <DeviceId pluginId="LocalEmulator" identifier="path=/Users/simone/.android/avd/Pixel_9_Pro.avd" />
             </handle>
           </Target>
         </DropdownSelection>

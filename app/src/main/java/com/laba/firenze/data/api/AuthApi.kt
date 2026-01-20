@@ -18,7 +18,7 @@ interface AuthApi {
      * Identico a iOS SessionVM.loginROPC()
      */
     @FormUrlEncoded
-    @POST("identityserver/connect/token")
+    @POST("connect/token")
     suspend fun login(
         @Header("Authorization") basicAuth: String,
         @Field("grant_type") grantType: String = "password",
@@ -33,7 +33,7 @@ interface AuthApi {
      * Refresh token (identico a iOS SessionVM.refreshToken())
      */
     @FormUrlEncoded
-    @POST("identityserver/connect/token")
+    @POST("connect/token")
     suspend fun refresh(
         @Header("Authorization") basicAuth: String,
         @Field("grant_type") grantType: String = "refresh_token",

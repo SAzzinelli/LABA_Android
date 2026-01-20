@@ -8,8 +8,13 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import android.app.Activity
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -17,11 +22,19 @@ private val DarkColorScheme = darkColorScheme(
     tertiary = Pink80,
     background = Color(0xFF121212),
     surface = Color(0xFF1E1E1E),
+    surfaceVariant = Color(0xFF49454F),
     onPrimary = Color.White,
     onSecondary = Color.White,
     onTertiary = Color.White,
-    onBackground = Color.White,
-    onSurface = Color.White,
+    onBackground = Color(0xFFEAE1D9),
+    onSurface = Color(0xFFEAE1D9),
+    onSurfaceVariant = Color(0xFFD3C4B4),
+    outline = Color(0xFF9C8F80),
+    outlineVariant = Color(0xFF4F4539),
+    error = Color(0xFFFFB4AB),
+    errorContainer = Color(0xFF93000A),
+    onError = Color(0xFF690005),
+    onErrorContainer = Color(0xFFFFDAD6),
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -39,6 +52,10 @@ private val LightColorScheme = lightColorScheme(
     onSurfaceVariant = Color(0xFF49454F),
     outline = Color(0xFF79747E),
     outlineVariant = Color(0xFFCAC4D0),
+    error = Color(0xFFBA1A1A),
+    errorContainer = Color(0xFFFFDAD6),
+    onError = Color.White,
+    onErrorContainer = Color(0xFF410002),
 )
 
 @Composable
@@ -55,11 +72,23 @@ fun LABAFirenzeTheme(
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
-    // Rimuoviamo la gestione delle system bars per lasciare Android gestire tutto automaticamente
+    
+    // Gestione status bar conforme ai codelab Google Material 3
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            window.statusBarColor = colorScheme.primary.toArgb()
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+            }
+        }
+    }
 
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = Shapes,
         content = content
     )
 }

@@ -8,10 +8,21 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import com.laba.firenze.data.local.AppearancePreferences
+import com.laba.firenze.data.gamification.AchievementManager
+
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val sessionRepository: SessionRepository
+    private val sessionRepository: SessionRepository,
+    private val appearancePreferences: AppearancePreferences,
+    private val achievementManager: AchievementManager
 ) : ViewModel() {
+    
+    fun getApiVersion(): String = appearancePreferences.getApiVersion()
+    
+    fun setApiVersion(version: String) {
+        appearancePreferences.setApiVersion(version)
+    }
     
     private val _authState = MutableStateFlow(AuthState())
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
@@ -37,6 +48,25 @@ class AuthViewModel @Inject constructor(
                     _authState.value = _authState.value.copy(
                         isLoading = false,
                         error = "Credenziali non valide"
+                    )
+                } else {
+                    // Login successful
+                    // Track achievements
+                    achievementManager.trackFirstLogin()
+                    achievementManager.trackLogin()
+                    
+                    // Sync achievements
+                    val profile = sessionRepository.getUserProfile()
+                    val email = profile?.emailLABA ?: profile?.emailPersonale ?: "$username@laba.biz"
+                    achievementManager.setUserEmail(email)
+                    
+                    // Sync achievements from Supabase after login
+                    achievementManager.syncFromSupabaseIfNeeded(email)
+                    
+                    _authState.value = _authState.value.copy(
+                        isLoading = false,
+                        error = null,
+                        isLoggedIn = true
                     )
                 }
             } catch (e: Exception) {

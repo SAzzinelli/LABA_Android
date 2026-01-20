@@ -36,7 +36,20 @@ fun ProfileScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showTutorial by remember { mutableStateOf(false) }
+    var showGroupDisabledAlert by remember { mutableStateOf(false) }
     
+    // Track section visit
+    LaunchedEffect(Unit) {
+        viewModel.trackSectionVisit("profile")
+    }
+    
+    // Logic to disable group selection
+    val status = uiState.userProfile?.status?.lowercase() ?: ""
+    val currentYear = uiState.userProfile?.currentYear
+    val isGraduated = status.contains("laureat")
+    val isFuoricorso = currentYear == null && !isGraduated
+    val shouldDisableGroup = isGraduated || isFuoricorso
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -63,6 +76,47 @@ fun ProfileScreen(
             ProfileHeader(userProfile = uiState.userProfile)
         }
         
+        // La tua carriera Section
+        item {
+            ProfileSection(
+                title = "La tua carriera",
+                items = listOf(
+                    ProfileMenuActionItem(
+                        title = "Anagrafica",
+                        icon = Icons.Default.Person,
+                        onClick = { navController.navigate("anagrafica") }
+                    ),
+                    ProfileMenuActionItem(
+                        title = "Tessera studente",
+                        icon = Icons.Default.Badge, // Or CardMembership if Badge not available
+                        onClick = { navController.navigate("student_card") }
+                    ),
+                    ProfileMenuActionItem(
+                        title = "Traguardi",
+                        icon = Icons.Default.EmojiEvents, // Trophy icon
+                        onClick = { navController.navigate("achievements") }
+                    ),
+                    ProfileMenuActionItem(
+                        title = "Il tuo gruppo",
+                        icon = Icons.Default.Groups,
+                        onClick = { 
+                            if (shouldDisableGroup) {
+                                showGroupDisabledAlert = true
+                            } else {
+                                navController.navigate("group_selection")
+                            }
+                        },
+                        subtitle = if (shouldDisableGroup) "Non disponibile" else null
+                    ),
+                    ProfileMenuActionItem(
+                        title = "Agevolazioni",
+                        icon = Icons.Default.LocalOffer,
+                        onClick = { navController.navigate("benefits") } // This is LABANavigation.Benefits.route ("benefits")
+                    )
+                )
+            )
+        }
+        
         // Resources Section
         item {
             ProfileSection(
@@ -87,6 +141,25 @@ fun ProfileScreen(
             )
         }
         
+        // Utilità Section (identica a iOS)
+        item {
+            ProfileSection(
+                title = "Utilità",
+                items = listOf(
+                    ProfileMenuActionItem(
+                        title = "FAQ",
+                        icon = Icons.AutoMirrored.Filled.Help,
+                        onClick = { navController.navigate("faq") }
+                    ),
+                    ProfileMenuActionItem(
+                        title = "Servizi",
+                        icon = Icons.Default.Settings,
+                        onClick = { navController.navigate("servizi") }
+                    )
+                )
+            )
+        }
+        
         // Assistance Section
         item {
             ProfileSection(
@@ -98,9 +171,9 @@ fun ProfileScreen(
                         onClick = { navController.navigate("regulations") }
                     ),
                     ProfileMenuActionItem(
-                        title = "FAQ",
-                        icon = Icons.AutoMirrored.Filled.Help,
-                        onClick = { /* TODO: Implement FAQ */ }
+                        title = "Privacy e Sicurezza",
+                        icon = Icons.Default.PrivacyTip,
+                        onClick = { navController.navigate("privacy-security") }
                     )
                 )
             )
@@ -390,6 +463,19 @@ fun ProfileScreen(
                 )
             }
         }
+    }
+    
+    if (showGroupDisabledAlert) {
+        AlertDialog(
+            onDismissRequest = { showGroupDisabledAlert = false },
+            title = { Text("Attenzione") },
+            text = { Text("Per gli studenti fuori corso o laureati non è possibile selezionare un gruppo.") },
+            confirmButton = {
+                TextButton(onClick = { showGroupDisabledAlert = false }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 }
 

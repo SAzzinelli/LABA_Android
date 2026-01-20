@@ -106,11 +106,13 @@ data class Esame(
     val cfa: String? = null, // Changed from cfu to cfa to match API
     val anno: String? = null,
     val voto: String? = null,
-    val data: String? = null,
+    val data: String? = null, // sostenutoIl - data in cui è stato sostenuto
     val tipo: String? = null,
     val stato: String? = null,
     val propedeutico: String? = null,
-    val richiedibile: Boolean = false
+    val richiedibile: Boolean = false,
+    val dataRichiesta: String? = null, // Data in cui è stato prenotato
+    val esitoRichiesta: String? = null // Esito della richiesta
 ) : Parcelable
 
 @Parcelize

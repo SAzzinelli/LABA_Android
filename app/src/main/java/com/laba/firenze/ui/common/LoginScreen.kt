@@ -32,8 +32,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.foundation.clickable
 import com.laba.firenze.R
 import com.laba.firenze.ui.auth.AuthViewModel
+import com.laba.firenze.ui.common.DevOptionsSheet
+import com.laba.firenze.ui.home.HomeViewModel // Use HomeViewModel for state
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,15 +81,43 @@ fun LoginScreen(
         ) {
             Spacer(modifier = Modifier.height(80.dp))
             
-            // LABA Logo - usa logo blu in light mode, bianco in dark mode
+    // LABA Logo - usa logo blu in light mode, bianco in dark mode
             val isDarkTheme = isSystemInDarkTheme()
+            
+            // Developer Mode State
+            var tapCount by remember { mutableStateOf(0) }
+            var showDevMenu by remember { mutableStateOf(false) }
+            
             Image(
                 painter = painterResource(
                     id = if (isDarkTheme) R.drawable.bianco else R.drawable.blu
                 ),
                 contentDescription = "LABA Logo",
-                modifier = Modifier.size(160.dp)
+                modifier = Modifier
+                    .size(160.dp)
+                    .clickable(
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        indication = null // Disable ripple
+                    ) {
+                        tapCount++
+                        if (tapCount >= 5) {
+                            tapCount = 0
+                            showDevMenu = true
+                        }
+                    }
             )
+            
+            if (showDevMenu) {
+                DevOptionsSheet(
+                    currentVersion = authViewModel.getApiVersion(),
+                    onSelectVersion = { version -> 
+                        authViewModel.setApiVersion(version)
+                        showDevMenu = false
+                        // Restart App logic here? Or just let user know
+                    },
+                    onDismiss = { showDevMenu = false }
+                )
+            }
             
             Spacer(modifier = Modifier.height(40.dp))
             

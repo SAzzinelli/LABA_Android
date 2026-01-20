@@ -39,6 +39,11 @@ fun CoursesScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
     
+    // Track section visit
+    LaunchedEffect(Unit) {
+        viewModel.trackSectionVisit("corsi")
+    }
+    
     Column(
         modifier = Modifier
             .fillMaxSize()

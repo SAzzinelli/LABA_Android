@@ -1,7 +1,14 @@
 package com.laba.firenze.ui.exams
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
@@ -9,6 +16,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -17,6 +28,10 @@ import com.laba.firenze.domain.model.Esame
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * ExamDetailScreen completa (identica a iOS ExamDetailView)
+ * Include: header card, banner dinamico, propedeuticità, prenotazione
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExamDetailScreen(
@@ -25,8 +40,10 @@ fun ExamDetailScreen(
     viewModel: ExamsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val allExams by viewModel.exams.collectAsState()
     val exam = viewModel.getExamById(examId)
     var showBookingAlert by remember { mutableStateOf(false) }
+    var propedeuticoExpanded by remember { mutableStateOf(false) }
     
     // Mostra loading se i dati non sono ancora caricati
     if (uiState.isLoading && exam == null) {
@@ -49,239 +66,133 @@ fun ExamDetailScreen(
         return
     }
     
-    Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        TopAppBar(
-            title = { Text("Dettagli esame") },
-            navigationIcon = {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Indietro")
+    val liveExam = exam // Per coerenza con iOS "liveEsame"
+    val isBooked = liveExam.dataRichiesta != null
+    val infoTitle = if (isBooked) "Informazioni sull'esame" else "Informazioni sul corso"
+    val infoColor = if (isBooked) Color(0xFFFF3B30) else MaterialTheme.colorScheme.primary // Rosso se prenotato
+    
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Dettagli esame") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Indietro")
+                    }
                 }
-            }
-        )
-        
+            )
+        }
+    ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Sezione Dettagli
+            // Header Card con Titolo e Voto/Banner
             item {
-                Card {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = "Dettagli",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        )
-                        
-                        DetailRow("Materia", prettifyTitle(exam.corso))
-                        
-                        exam.docente?.let { docente ->
-                            if (docente.isNotEmpty()) {
-                                DetailRow("Docente", docente)
-                            }
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Titolo esame prominente
+                    Text(
+                        text = prettifyTitle(liveExam.corso),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    // Voto o Status Banner
+                    when {
+                        !liveExam.voto.isNullOrEmpty() -> {
+                            // Esame superato - banner verde
+                            ExamPassedBanner(voto = liveExam.voto!!)
                         }
-                        
-                        exam.anno?.let { anno ->
-                            DetailRow("Anno", getItalianOrdinalYear(anno.toIntOrNull() ?: 1))
-                        }
-                        
-                        exam.cfa?.let { cfa ->
-                            DetailRow("CFA", cfa)
-                        }
-                        
-                        exam.data?.let { data ->
-                            DetailRow("Data", formatDate(data))
-                        }
-                        
-                        if (!exam.voto.isNullOrEmpty()) {
-                            DetailRow("Voto", exam.voto)
+                        liveExam.dataRichiesta != null -> {
+                            // Prenotato - banner rosso con glow
+                            BookingGlowBanner(date = liveExam.dataRichiesta!!)
                         }
                     }
                 }
             }
             
-            // Sezione Propedeuticità (se presente)
-            // Logica corretta: un esame ha un prerequisito solo se è il "2" o "3" di una materia
-            // Esempio: "Architettura Interni 2" richiede "Architettura Interni 1"
-            val prerequisite = uiState.allExams.firstOrNull { prerequisiteExam ->
-                val examCourse = exam.corso.uppercase()
+            // Card Dettagli (con colori dinamici)
+            item {
+                ExamInfoCard(
+                    exam = liveExam,
+                    title = infoTitle,
+                    titleColor = infoColor
+                )
+            }
+            
+            // Propedeuticità (se questo esame richiede un prerequisito)
+            val prerequisite = allExams.firstOrNull { prerequisiteExam ->
+                val examCourse = liveExam.corso.uppercase()
                 val prerequisiteCourse = prerequisiteExam.corso.uppercase()
                 
-                // Estrai il numero dall'esame attuale (se presente)
                 val examNumber = examCourse.filter { it.isDigit() }.toIntOrNull()
                 val prerequisiteNumber = prerequisiteCourse.filter { it.isDigit() }.toIntOrNull()
                 
-                // L'esame attuale deve essere 2 o 3, e il prerequisito deve essere il numero precedente
                 examNumber != null && prerequisiteNumber != null && 
                 examNumber > 1 && prerequisiteNumber == examNumber - 1 &&
-                // Controlla che sia la stessa materia (stesso nome senza numero)
-                examCourse.replace(Regex("\\d+"), "").trim() == prerequisiteCourse.replace(Regex("\\d+"), "").trim()
+                examCourse.replace(Regex("\\d+"), "").trim() == prerequisiteCourse.replace(Regex("\\d+"), "").trim() &&
+                prerequisiteExam.oid != liveExam.oid
             }
             
-            if (prerequisite != null) {
+            prerequisite?.let { prev ->
                 item {
-                    Card {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Text(
-                                text = "Precedente richiesto",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(bottom = 12.dp)
-                            )
-                            
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                val passed = !(prerequisite.voto ?: "").isEmpty()
-                                Icon(
-                                    imageVector = if (passed) Icons.Filled.CheckCircle else Icons.Filled.Warning,
-                                    contentDescription = null,
-                                    tint = if (passed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.padding(end = 12.dp)
-                                )
-                                
-                                Column {
-                                    Text(
-                                        text = prettifyTitle(prerequisite.corso),
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    
-                                    if (!prerequisite.voto.isNullOrEmpty()) {
-                                        Text(
-                                            text = "Voto: ${prerequisite.voto}",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    } else {
-                                        // Badge senza bordo, solo sfondo colorato
-                                        Surface(
-                                            color = MaterialTheme.colorScheme.errorContainer,
-                                            shape = MaterialTheme.shapes.small,
-                                            modifier = Modifier.padding(top = 4.dp)
-                                        ) {
-                                            Text(
-                                                text = "Da sostenere",
-                                                style = MaterialTheme.typography.labelMedium,
-                                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            Text(
-                                text = "È necessario aver superato ${prettifyTitle(prerequisite.corso)} per poter prenotare ${prettifyTitle(exam.corso)}.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
-                        }
-                    }
+                    PrerequisiteCard(
+                        prerequisite = prev,
+                        currentExam = liveExam,
+                        isExpanded = propedeuticoExpanded,
+                        onExpandedChange = { propedeuticoExpanded = it },
+                        isNotBooked = liveExam.dataRichiesta == null && liveExam.voto.isNullOrEmpty()
+                    )
                 }
             }
             
-            // Sezione Propedeuticità - mostra quali esami questo esame sblocca
-            val unlockedExams = uiState.allExams.filter { potentialExam ->
-                val examCourse = exam.corso.uppercase()
+            // Propedeuticità inversa (esami sbloccati da questo esame)
+            val unlockedExams = allExams.filter { potentialExam ->
+                val examCourse = liveExam.corso.uppercase()
                 val potentialCourse = potentialExam.corso.uppercase()
                 
-                // Estrai i numeri
                 val examNumber = examCourse.filter { it.isDigit() }.toIntOrNull()
                 val potentialNumber = potentialCourse.filter { it.isDigit() }.toIntOrNull()
                 
-                // L'esame attuale deve essere 1 o 2, e l'esame sbloccato deve essere il numero successivo
                 examNumber != null && potentialNumber != null && 
                 potentialNumber == examNumber + 1 &&
-                // Controlla che sia la stessa materia
-                examCourse.replace(Regex("\\d+"), "").trim() == potentialCourse.replace(Regex("\\d+"), "").trim()
+                examCourse.replace(Regex("\\d+"), "").trim() == potentialCourse.replace(Regex("\\d+"), "").trim() &&
+                potentialExam.oid != liveExam.oid
             }
             
             if (unlockedExams.isNotEmpty()) {
                 item {
-                    Card {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Text(
-                                text = "Propedeuticità",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(bottom = 12.dp)
-                            )
-                            
-                            unlockedExams.forEach { unlockedExam ->
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.padding(end = 12.dp)
-                                    )
-                                    
-                                    Text(
-                                        text = prettifyTitle(unlockedExam.corso),
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-                            }
-                            
-                            Text(
-                                text = "Superando ${prettifyTitle(exam.corso)} potrai prenotare questi esami.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
-                        }
+                    val isCurrentExamPassed = !liveExam.voto.isNullOrEmpty()
+                    
+                    if (!isCurrentExamPassed) {
+                        // Mostra "Esami successivi bloccati"
+                        BlockedExamsCard(
+                            unlockedExams = unlockedExams.map { it.corso },
+                            currentExam = liveExam.corso
+                        )
+                    } else {
+                        // Mostra "Esami sbloccati"
+                        UnlockedExamsCard(
+                            unlockedExams = unlockedExams.map { it.corso },
+                            currentExam = liveExam.corso
+                        )
                     }
                 }
             }
             
-            // Sezione Prenotazione - Pulsante
-            item {
-                if (exam.richiedibile) {
-                    Button(
-                        onClick = { showBookingAlert = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Event,
-                            contentDescription = null,
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                        Text("Prenota ora")
-                    }
-                } else {
-                    // Pulsante disattivato per prenotazione non disponibile
-                    Button(
-                        onClick = { },
-                        enabled = false,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.EventBusy,
-                            contentDescription = null,
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                        Text("Prenotazione non disponibile")
-                    }
+            // Prenotazione (solo se non superato e non già prenotato)
+            if (liveExam.voto.isNullOrEmpty() && liveExam.dataRichiesta == null) {
+                item {
+                    BookingSection(
+                        exam = liveExam,
+                        onBookClick = { showBookingAlert = true }
+                    )
                 }
             }
         }
@@ -302,27 +213,594 @@ fun ExamDetailScreen(
     }
 }
 
+// MARK: - Banner Esame Superato (verde)
 @Composable
-private fun DetailRow(
-    label: String,
-    value: String
-) {
-    Row(
+private fun ExamPassedBanner(voto: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF4CAF50) // Verde
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(32.dp)
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = "Esame Superato",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                )
+                Text(
+                    text = "Voto: $voto",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.9f)
+                )
+            }
+        }
+    }
+}
+
+// MARK: - Banner Prenotazione (rosso con glow)
+@Composable
+private fun BookingGlowBanner(date: String) {
+    val infiniteTransition = rememberInfiniteTransition(label = "glow")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rotation"
+    )
+    val glowIntensity by infiniteTransition.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow"
+    )
+    
+    val pastelRed = Color(0xFFFF3B30)
+    val formattedDate = try {
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+        val parsedDate = dateFormat.parse(date)
+        if (parsedDate != null) {
+            val outputFormat = SimpleDateFormat("dd/MM/yyyy", Locale.ITALIAN)
+            outputFormat.format(parsedDate)
+        } else {
+            date
+        }
+    } catch (e: Exception) {
+        date
+    }
+    
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+            .shadow(12.dp, RoundedCornerShape(16.dp))
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = pastelRed
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CalendarMonth,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp)
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "Prenotazione Effettuata",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "Prenotato il: $formattedDate",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.9f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Card Informazioni Esame
+@Composable
+private fun ExamInfoCard(
+    exam: Esame,
+    title: String,
+    titleColor: Color
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = titleColor,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = titleColor
+                )
+            }
+            
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                ExamDetailRow(
+                    label = "Docente",
+                    value = exam.docente ?: "—",
+                    icon = Icons.Default.Person,
+                    iconColor = titleColor
+                )
+                
+                exam.anno?.let { anno ->
+                    ExamDetailRow(
+                        label = "Anno",
+                        value = getItalianOrdinalYear(anno.toIntOrNull() ?: 1),
+                        icon = Icons.Default.CalendarMonth,
+                        iconColor = titleColor
+                    )
+                }
+                
+                exam.cfa?.let { cfa ->
+                    ExamDetailRow(
+                        label = "Crediti formativi (CFA)",
+                        value = cfa,
+                        icon = Icons.Default.School,
+                        iconColor = titleColor
+                    )
+                }
+                
+                exam.data?.let { data ->
+                    ExamDetailRow(
+                        label = "Data sostenimento",
+                        value = formatDate(data),
+                        icon = Icons.Default.CalendarMonth,
+                        iconColor = titleColor
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExamDetailRow(
+    label: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconColor: Color
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = iconColor,
+            modifier = Modifier.size(20.dp)
         )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium
-        )
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+// MARK: - Card Propedeuticità
+@Composable
+private fun PrerequisiteCard(
+    prerequisite: Esame,
+    currentExam: Esame,
+    isExpanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    isNotBooked: Boolean
+) {
+    LaunchedEffect(isNotBooked) {
+        onExpandedChange(isNotBooked)
+    }
+    
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onExpandedChange(!isExpanded) },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Esame propedeutico richiesto",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            if (isExpanded) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Per poter sostenere l'esame di ${prettifyTitle(currentExam.corso)} è necessario aver superato questo esame:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    val passed = !prerequisite.voto.isNullOrEmpty()
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp)
+                            .background(
+                                if (passed) Color(0xFF4CAF50).copy(alpha = 0.1f)
+                                else Color(0xFFFF9800).copy(alpha = 0.1f),
+                                RoundedCornerShape(12.dp)
+                            ),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (passed) Icons.Default.CheckCircle else Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = if (passed) Color(0xFF4CAF50) else Color(0xFFFF9800),
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = prettifyTitle(prerequisite.corso),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            
+                            if (!prerequisite.voto.isNullOrEmpty()) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        text = "Superato",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text("·", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(
+                                        text = "Voto: ${prerequisite.voto}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            } else {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.errorContainer,
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.padding(top = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "Da sostenere",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Card Esami Bloccati
+@Composable
+private fun BlockedExamsCard(
+    unlockedExams: List<String>,
+    currentExam: String
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFFF9800).copy(alpha = 0.1f) // Arancione chiaro
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = Color(0xFFFF9800),
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = "Esami successivi bloccati",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFFF9800)
+                )
+            }
+            
+            unlockedExams.forEach { unlockedExam ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp)
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            RoundedCornerShape(12.dp)
+                        ),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = prettifyTitle(unlockedExam),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = "Non disponibile",
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+            
+            Text(
+                text = "Devi prima sostenere ${prettifyTitle(currentExam)} prima di poter prenotare ${unlockedExams.joinToString(" e ") { prettifyTitle(it) }}.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+// MARK: - Card Esami Sbloccati
+@Composable
+private fun UnlockedExamsCard(
+    unlockedExams: List<String>,
+    currentExam: String
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = "Esami sbloccati",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            
+            unlockedExams.forEach { unlockedExam ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = prettifyTitle(unlockedExam),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+            
+            Text(
+                text = "Superando ${prettifyTitle(currentExam)} sarà possibile prenotare ${unlockedExams.joinToString(" e ") { prettifyTitle(it) }}.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+// MARK: - Sezione Prenotazione
+@Composable
+private fun BookingSection(
+    exam: Esame,
+    onBookClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CalendarMonth,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = "Prenotazione",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            if (exam.richiedibile) {
+                Text(
+                    text = "Clicca sul pulsante sottostante per prenotarti all'appello. Assicurati di poter essere presente.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Button(
+                    onClick = onBookClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarMonth,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Text(
+                            text = "Prenota esame",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Prenotazione non disponibile",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -339,21 +817,20 @@ private fun prettifyTitle(title: String): String {
 
 private fun getItalianOrdinalYear(year: Int): String {
     return when (year) {
-        1 -> "Primo anno"
-        2 -> "Secondo anno"
-        3 -> "Terzo anno"
-        else -> "Anno $year"
+        1 -> "1° anno"
+        2 -> "2° anno"
+        3 -> "3° anno"
+        else -> "$year° anno"
     }
 }
 
 private fun formatDate(dateString: String): String {
     return try {
-        // Prova a parsare la data se è in formato ISO
         val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val outputFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
         val date = inputFormat.parse(dateString)
         outputFormat.format(date ?: Date())
     } catch (e: Exception) {
-        dateString // Ritorna la stringa originale se non riesce a parsarla
+        dateString
     }
 }

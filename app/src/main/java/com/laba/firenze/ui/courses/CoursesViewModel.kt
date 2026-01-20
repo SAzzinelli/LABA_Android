@@ -11,7 +11,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CoursesViewModel @Inject constructor(
-    private val sessionRepository: SessionRepository
+    private val sessionRepository: SessionRepository,
+    private val achievementManager: com.laba.firenze.data.gamification.AchievementManager
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(CoursesUiState())
@@ -19,6 +20,10 @@ class CoursesViewModel @Inject constructor(
     
     init {
         loadCourses()
+    }
+    
+    fun trackSectionVisit(section: String) {
+        achievementManager.trackSectionVisit(section)
     }
     
     private fun loadCourses() {
