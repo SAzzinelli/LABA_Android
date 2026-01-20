@@ -18,11 +18,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.laba.firenze.data.gamification.AchievementManager
 import com.laba.firenze.domain.model.Achievement
 import com.laba.firenze.domain.model.AchievementCategory
 import com.laba.firenze.ui.gamification.AchievementIconHelper
+import com.laba.firenze.ui.home.HomeViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.StateFlow
+import javax.inject.Inject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,8 +36,8 @@ fun AchievementsScreen(
     homeViewModel: HomeViewModel = hiltViewModel(),
     navController: NavController
 ) {
-    val achievements by viewModel.achievements.collectAsState()
-    val totalPoints by viewModel.totalPoints.collectAsState()
+    val achievements by viewModel.achievements.collectAsStateWithLifecycle()
+    val totalPoints by viewModel.totalPoints.collectAsStateWithLifecycle()
     
     // Track section visit
     LaunchedEffect(Unit) {

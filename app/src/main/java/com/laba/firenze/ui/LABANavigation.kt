@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -70,7 +71,7 @@ fun LABANavigation(
     navigationViewModel: com.laba.firenze.ui.navigation.NavigationViewModel = hiltViewModel()
 ) {
     val navController = rememberNavController()
-    val activeTabs by navigationViewModel.activeTabs.collectAsState()
+    val activeTabs by navigationViewModel.activeTabs.collectAsStateWithLifecycle()
     
     // Achievement Unlocked Toast Banner (global) - shown in all screens
     val achievementManagerViewModel: com.laba.firenze.ui.gamification.AchievementsViewModel = hiltViewModel()
