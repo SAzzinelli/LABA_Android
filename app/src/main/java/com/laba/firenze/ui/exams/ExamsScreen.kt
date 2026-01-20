@@ -128,7 +128,7 @@ fun ExamsScreen(
                         expanded = statusMenuExpanded,
                         onDismissRequest = { statusMenuExpanded = false }
                     ) {
-                        StatusFilter.values().forEach { filter ->
+                        StatusFilter.entries.forEach { filter ->
                             DropdownMenuItem(
                                 text = { Text(getStatusTitle(filter)) },
                                 onClick = {

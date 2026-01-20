@@ -1,12 +1,9 @@
 package com.laba.firenze.ui.seminars
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -19,7 +16,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.laba.firenze.domain.model.Seminario
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,7 +24,6 @@ fun SeminarDetailScreen(
     seminarId: String,
     viewModel: SeminarsViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
     val seminar = viewModel.getSeminarById(seminarId)
     var showBookingAlert by remember { mutableStateOf(false) }
     

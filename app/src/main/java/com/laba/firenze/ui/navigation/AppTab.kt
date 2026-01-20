@@ -2,7 +2,6 @@ package com.laba.firenze.ui.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
-import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.Rule
 import androidx.compose.material.icons.filled.*
@@ -28,7 +27,7 @@ enum class AppTab(
 
     companion object {
         fun fromRoute(route: String): AppTab? {
-            return values().find { it.route == route }
+            return entries.find { it.route == route }
         }
     }
 }

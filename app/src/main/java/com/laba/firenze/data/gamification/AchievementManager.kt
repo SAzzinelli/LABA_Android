@@ -1,7 +1,6 @@
 package com.laba.firenze.data.gamification
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
@@ -27,7 +26,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -124,7 +122,7 @@ class AchievementManager @Inject constructor(
     
     private suspend fun initializeAchievements() {
         Log.d("AchievementManager", "🆕 No local achievements found, initializing with all achievements")
-        val allAchievements = AchievementID.values().map { id ->
+        val allAchievements = AchievementID.entries.map { id ->
             AchievementFactory.createAchievement(id)
         }
         _achievements.value = allAchievements
@@ -1104,10 +1102,10 @@ class AchievementManager @Inject constructor(
     
     fun resetAllAchievements() {
         scope.launch {
-            _achievements.value = AchievementID.values().map { id ->
+            _achievements.value = AchievementID.entries.map { id ->
                 AchievementFactory.createAchievement(id)
             }
-            _stats.value = com.laba.firenze.domain.model.UserStats()
+            _stats.value = UserStats()
             saveAchievements()
             saveStats()
         }

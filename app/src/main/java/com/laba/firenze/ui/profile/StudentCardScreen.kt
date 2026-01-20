@@ -156,8 +156,8 @@ fun StudentVerificationBadge(
                 spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
             )
     ) {
-        val width = constraints.maxWidth.toFloat()
-        val height = constraints.maxHeight.toFloat()
+        val width = with(density) { maxWidth.toPx() }
+        val height = with(density) { maxHeight.toPx() }
         
         val centerX = width / 2 + (roll * 4) // Sensitivity factor
         val centerY = height / 2 + (pitch * 4)

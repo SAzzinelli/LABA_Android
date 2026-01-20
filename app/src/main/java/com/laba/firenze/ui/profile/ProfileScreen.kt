@@ -3,6 +3,7 @@ package com.laba.firenze.ui.profile
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -225,7 +226,7 @@ fun ProfileScreen(
                         icon = Icons.Default.Email,
                         onClick = {
                             val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
-                                data = Uri.parse("mailto:info@laba.biz")
+                                data = "mailto:info@laba.biz".toUri()
                                 putExtra(Intent.EXTRA_SUBJECT, "Richiesta informazioni")
                             }
                             try {
@@ -233,7 +234,7 @@ fun ProfileScreen(
                                     context.startActivity(emailIntent)
                                 } else {
                                     val fallbackIntent = Intent(Intent.ACTION_VIEW).apply {
-                                        data = Uri.parse("mailto:info@laba.biz")
+                                        data = "mailto:info@laba.biz".toUri()
                                     }
                                     context.startActivity(fallbackIntent)
                                 }
@@ -248,7 +249,7 @@ fun ProfileScreen(
                         onClick = {
                             try {
                                 val intent = Intent(Intent.ACTION_VIEW).apply {
-                                    data = Uri.parse("https://wa.me/393516905915")
+                                    data = "https://wa.me/393516905915".toUri()
                                 }
                                 if (intent.resolveActivity(context.packageManager) != null) {
                                     context.startActivity(intent)
@@ -277,7 +278,7 @@ fun ProfileScreen(
                             try {
                                 // Crea Intent con chooser per selezionare browser
                                 val webIntent = Intent(Intent.ACTION_VIEW).apply {
-                                    data = Uri.parse("https://www.laba.biz")
+                                    data = "https://www.laba.biz".toUri()
                                 }
                                 
                                 // Crea chooser per permettere selezione browser
@@ -298,7 +299,7 @@ fun ProfileScreen(
                                     var opened = false
                                     for (packageName in browserPackages) {
                                         val intent = Intent(Intent.ACTION_VIEW).apply {
-                                            data = Uri.parse("https://www.laba.biz")
+                                            data = "https://www.laba.biz".toUri()
                                             setPackage(packageName)
                                         }
                                         if (intent.resolveActivity(context.packageManager) != null) {
@@ -326,7 +327,7 @@ fun ProfileScreen(
                             try {
                                 // Crea Intent con chooser per selezionare browser
                                 val webIntent = Intent(Intent.ACTION_VIEW).apply {
-                                    data = Uri.parse("https://iris.rete.toscana.it/public")
+                                    data = "https://iris.rete.toscana.it/public".toUri()
                                 }
                                 
                                 // Crea chooser per permettere selezione browser
@@ -347,7 +348,7 @@ fun ProfileScreen(
                                     var opened = false
                                     for (packageName in browserPackages) {
                                         val intent = Intent(Intent.ACTION_VIEW).apply {
-                                            data = Uri.parse("https://iris.rete.toscana.it/public")
+                                            data = "https://iris.rete.toscana.it/public".toUri()
                                             setPackage(packageName)
                                         }
                                         if (intent.resolveActivity(context.packageManager) != null) {
@@ -374,7 +375,7 @@ fun ProfileScreen(
                             try {
                                 // Crea Intent con chooser per selezionare browser
                                 val webIntent = Intent(Intent.ACTION_VIEW).apply {
-                                    data = Uri.parse("https://www.laba.biz/privacy-policy")
+                                    data = "https://www.laba.biz/privacy-policy".toUri()
                                 }
                                 
                                 // Crea chooser per permettere selezione browser
@@ -395,7 +396,7 @@ fun ProfileScreen(
                                     var opened = false
                                     for (packageName in browserPackages) {
                                         val intent = Intent(Intent.ACTION_VIEW).apply {
-                                            data = Uri.parse("https://www.laba.biz/privacy-policy")
+                                            data = "https://www.laba.biz/privacy-policy".toUri()
                                             setPackage(packageName)
                                         }
                                         if (intent.resolveActivity(context.packageManager) != null) {
@@ -919,7 +920,3 @@ data class ProfileActionItem(
     val onClick: () -> Unit
 ) : ProfileMenuItem()
 
-@Composable
-fun ProfileViewModel(): ProfileViewModel {
-    return hiltViewModel()
-}

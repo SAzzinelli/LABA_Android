@@ -1,7 +1,6 @@
 package com.laba.firenze.ui.gamification
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,19 +17,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.laba.firenze.data.gamification.AchievementManager
 import com.laba.firenze.domain.model.Achievement
 import com.laba.firenze.domain.model.AchievementCategory
-import com.laba.firenze.domain.model.AchievementRarity
-import com.laba.firenze.ui.home.HomeViewModel
 import com.laba.firenze.ui.gamification.AchievementIconHelper
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.StateFlow
-import androidx.compose.runtime.collectAsState
-import javax.inject.Inject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,7 +57,7 @@ fun AchievementsScreen(
     
     // Initialize expanded categories
     LaunchedEffect(Unit) {
-        expandedCategories = AchievementCategory.values().toSet()
+        expandedCategories = AchievementCategory.entries.toSet()
     }
     
     val filteredAchievements = remember(achievements, searchText) {
@@ -116,7 +108,7 @@ fun AchievementsScreen(
                 }
                 
                 // Categories (collapsible)
-                AchievementCategory.values().forEach { category ->
+                AchievementCategory.entries.forEach { category ->
                     val categoryAchievements: List<Achievement> = grouped[category] ?: emptyList()
                     if (categoryAchievements.isNotEmpty() || searchText.isEmpty()) {
                         item(key = "category_header_${category.id}") {
