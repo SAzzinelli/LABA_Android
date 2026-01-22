@@ -6,7 +6,9 @@ import android.net.Uri
 import androidx.core.net.toUri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -778,10 +780,19 @@ private fun ProfileAchievementWidget(
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(18.dp)
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = true) { onClick() },
+            .clip(shape)
+            .clickable(
+                enabled = enabled,
+                interactionSource = interactionSource,
+                indication = rememberRipple(bounded = true),
+                onClick = onClick
+            ),
         colors = CardDefaults.cardColors(
             containerColor = if (enabled) {
                 Color(0xFFFFF9C4) // Giallo chiaro come iOS quando abilitato
@@ -789,7 +800,7 @@ private fun ProfileAchievementWidget(
                 Color(0xFFFFF9C4).copy(alpha = 0.5f) // Più trasparente quando disabilitato
             }
         ),
-        shape = RoundedCornerShape(18.dp)
+        shape = shape
     ) {
         Row(
             modifier = Modifier
