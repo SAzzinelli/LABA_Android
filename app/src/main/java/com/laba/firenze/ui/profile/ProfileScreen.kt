@@ -31,67 +31,67 @@ import androidx.navigation.NavController
 import com.laba.firenze.ui.tutorial.TutorialScreen
 
 /**
- * Estrae solo la matricola del biennio se ci sono entrambe (triennio e biennio).
- * Se c'è solo una matricola o non contiene "biennio", restituisce quella originale.
- * 
- * Gestisce pattern come:
- * - "(triennio) 3747 FI (biennio)" -> estrae la parte dopo "biennio"
- * - "2570FI" -> restituisce originale (non contiene biennio)
- * - Se contiene sia triennio che biennio, mostra solo biennio
+ * Estrae le matricole triennio e biennio dalla stringa.
+ * Restituisce una coppia (triennio, biennio) dove uno o entrambi possono essere null.
  */
-private fun extractBiennioMatricola(matricola: String?): String? {
-    if (matricola.isNullOrBlank()) return null
+private fun parseMatricole(matricola: String?): Pair<String?, String?> {
+    if (matricola.isNullOrBlank()) return Pair(null, null)
     
     val lowerMatricola = matricola.lowercase()
+    var triennio: String? = null
+    var biennio: String? = null
     
-    // Se contiene sia "triennio" che "biennio", estrai solo quella del biennio
-    if (lowerMatricola.contains("triennio") && lowerMatricola.contains("biennio")) {
-        // Cerca pattern come "(triennio) XXXX (biennio) YYYY" o "(triennio) XXXX (biennio)"
-        // Estrai tutto dopo "(biennio)" o "biennio"
-        val biennioIndex = lowerMatricola.indexOf("biennio")
-        if (biennioIndex >= 0) {
-            // Prendi tutto dopo "biennio"
-            var afterBiennio = matricola.substring(biennioIndex + "biennio".length).trim()
-            
-            // Rimuovi parentesi iniziali/finali se presenti
-            afterBiennio = afterBiennio.trimStart('(', ' ', ')')
-            afterBiennio = afterBiennio.trimEnd('(', ' ', ')')
-            
-            // Se c'è contenuto dopo biennio, restituiscilo
-            if (afterBiennio.isNotEmpty()) {
-                // Rimuovi eventuali parentesi rimanenti e spazi extra
-                return afterBiennio.replace(Regex("""[()]"""), "").trim()
-            }
-            
-            // Se non c'è contenuto dopo biennio, potrebbe essere che biennio è alla fine
-            // In questo caso, cerca prima di biennio per trovare la matricola
-            val beforeBiennio = matricola.substring(0, biennioIndex).trim()
-            val triennioIndex = beforeBiennio.lowercase().indexOf("triennio")
-            if (triennioIndex >= 0) {
-                // Estrai la parte tra triennio e biennio (dovrebbe essere la matricola triennio)
-                // Ma noi vogliamo biennio, quindi cerchiamo dopo biennio
-                // Se non c'è nulla dopo biennio, potrebbe essere che la matricola biennio è prima
-                // Ma questo caso è raro, quindi restituiamo null o originale
-            }
+    // Se contiene "triennio"
+    if (lowerMatricola.contains("triennio")) {
+        val triennioIndex = lowerMatricola.indexOf("triennio")
+        // Cerca la matricola dopo "triennio"
+        var afterTriennio = matricola.substring(triennioIndex + "triennio".length).trim()
+        // Rimuovi parentesi iniziali
+        afterTriennio = afterTriennio.trimStart('(', ' ', ')')
+        
+        // Se c'è "biennio" dopo, estrai fino a lì
+        val biennioIndexInAfter = afterTriennio.lowercase().indexOf("biennio")
+        if (biennioIndexInAfter >= 0) {
+            triennio = afterTriennio.substring(0, biennioIndexInAfter).trim()
+            // Rimuovi parentesi finali
+            triennio = triennio.trimEnd('(', ' ', ')').replace(Regex("""[()]"""), "").trim()
+        } else {
+            // Non c'è biennio dopo, prendi tutto
+            triennio = afterTriennio.replace(Regex("""[()]"""), "").trim()
         }
     }
     
-    // Se contiene solo "biennio" (senza triennio), potrebbe essere solo biennio
-    // In questo caso, restituisci originale
-    if (lowerMatricola.contains("biennio") && !lowerMatricola.contains("triennio")) {
-        return matricola
+    // Se contiene "biennio"
+    if (lowerMatricola.contains("biennio")) {
+        val biennioIndex = lowerMatricola.indexOf("biennio")
+        // Cerca la matricola dopo "biennio"
+        var afterBiennio = matricola.substring(biennioIndex + "biennio".length).trim()
+        // Rimuovi parentesi iniziali
+        afterBiennio = afterBiennio.trimStart('(', ' ', ')')
+        // Rimuovi parentesi finali e spazi
+        biennio = afterBiennio.replace(Regex("""[()]"""), "").trim()
     }
     
-    // Se contiene solo "triennio" (senza biennio), non mostrare nulla? 
-    // No, l'utente ha detto di mostrare solo biennio se ci sono entrambe
-    // Se c'è solo triennio, probabilmente non dovremmo mostrare nulla o mostrare un messaggio
-    // Ma per sicurezza, restituiamo null se contiene solo triennio
-    if (lowerMatricola.contains("triennio") && !lowerMatricola.contains("biennio")) {
-        return null // Non mostrare se c'è solo triennio
+    // Se non contiene né triennio né biennio, potrebbe essere una sola matricola
+    if (triennio == null && biennio == null) {
+        // Restituisci come biennio se non contiene "triennio", altrimenti come triennio
+        if (!lowerMatricola.contains("triennio")) {
+            biennio = matricola.trim()
+        } else {
+            triennio = matricola.trim()
+        }
     }
     
-    // Se non contiene né triennio né biennio, restituisci originale
-    return matricola
+    return Pair(triennio, biennio)
+}
+
+/**
+ * Verifica se ci sono entrambe le matricole (triennio e biennio).
+ */
+private fun hasMultipleMatricole(matricola: String?): Boolean {
+    if (matricola.isNullOrBlank()) return false
+    val lower = matricola.lowercase()
+    return lower.contains("triennio") && lower.contains("biennio")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -104,6 +104,7 @@ fun ProfileScreen(
     val context = LocalContext.current
     var showTutorial by remember { mutableStateOf(false) }
     var showGroupDisabledAlert by remember { mutableStateOf(false) }
+    var showMatricoleDialog by remember { mutableStateOf(false) }
     
     // Track section visit
     LaunchedEffect(Unit) {
@@ -152,6 +153,7 @@ fun ProfileScreen(
         // Profile Header
         item {
             ProfileHeader(
+                onMatricoleClick = { showMatricoleDialog = true },
                 userProfile = uiState.userProfile,
                 achievementsEnabled = achievementsEnabled,
                 unlockedCount = unlockedCount,
@@ -542,6 +544,66 @@ fun ProfileScreen(
             }
         )
     }
+    
+    // Dialog per mostrare entrambe le matricole
+    if (showMatricoleDialog) {
+        val (triennioMatricola, biennioMatricola) = parseMatricole(uiState.userProfile?.matricola)
+        AlertDialog(
+            onDismissRequest = { showMatricoleDialog = false },
+            title = {
+                Text(
+                    text = "Matricole",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    if (triennioMatricola != null) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "Triennio:",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = triennioMatricola,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                    if (biennioMatricola != null) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "Biennio:",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = biennioMatricola,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showMatricoleDialog = false }) {
+                    Text("Chiudi")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -552,7 +614,8 @@ private fun ProfileHeader(
     totalPoints: Int,
     onAchievementsClick: () -> Unit,
     onAnagraficaClick: () -> Unit,
-    onServiziClick: () -> Unit
+    onServiziClick: () -> Unit,
+    onMatricoleClick: () -> Unit
 ) {
     val isDarkTheme = isSystemInDarkTheme()
     
@@ -651,11 +714,17 @@ private fun ProfileHeader(
                 }
                 
                 // Pillola numero matricola
-                // Se ci sono entrambe le matricole (triennio e biennio), mostra solo quella del biennio
-                val matricolaDisplay = extractBiennioMatricola(userProfile?.matricola) ?: "N/A"
+                val (triennioMatricola, biennioMatricola) = parseMatricole(userProfile?.matricola)
+                val hasMultiple = hasMultipleMatricole(userProfile?.matricola)
+                
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.clickable(enabled = hasMultiple) {
+                        if (hasMultiple) {
+                            onMatricoleClick()
+                        }
+                    }
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -669,11 +738,23 @@ private fun ProfileHeader(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "# Matricola: $matricolaDisplay",
+                            text = if (hasMultiple) {
+                                "Matricole"
+                            } else {
+                                "# Matricola: ${biennioMatricola ?: triennioMatricola ?: "N/A"}"
+                            },
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Medium
                         )
+                        if (hasMultiple) {
+                            Icon(
+                                Icons.Default.ArrowForward,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }

@@ -67,13 +67,14 @@ android {
 // Allineamento versioni Kotlin - usa versione compatibile
 configurations.all {
     resolutionStrategy {
-        force("org.jetbrains.kotlin:kotlin-stdlib:2.0.21")
-        force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.0.21")
-        force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.0.21")
-        force("org.jetbrains.kotlin:kotlin-stdlib-common:2.0.21")
-        // Forza anche kotlinx-coroutines a versione compatibile
-        force("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-        force("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+        // Kotlin stdlib allineato alla versione del plugin (2.2.10)
+        force("org.jetbrains.kotlin:kotlin-stdlib:2.2.10")
+        force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.2.10")
+        force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.2.10")
+        force("org.jetbrains.kotlin:kotlin-stdlib-common:2.2.10")
+        // kotlinx-coroutines aggiornato per compatibilità con Kotlin 2.2.10
+        force("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+        force("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     }
 }
 
@@ -116,7 +117,7 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     
     // Kotlin coroutines extensions for Firebase
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
     
     // JWT
     implementation("io.jsonwebtoken:jjwt-api:0.12.3")
@@ -133,7 +134,7 @@ dependencies {
     ksp("androidx.room:room-compiler:2.7.0")
     
     // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     
     // Kotlinx Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
