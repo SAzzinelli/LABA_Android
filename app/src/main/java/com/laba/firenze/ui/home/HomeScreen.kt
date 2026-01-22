@@ -99,9 +99,11 @@ fun HomeScreen(
         
         // YEAR PROGRESS + CAREER AVERAGE
         item {
+            val profile = viewModel.getUserProfile()
             YearProgressAndAverageSection(
                 yearProgress = uiState.yearProgress,
                 careerAverage = uiState.careerAverage,
+                isBiennio = isBiennioLevel(profile),
                 onNavigateToGrades = { navController.navigate("grades/trend") }
             )
         }
@@ -422,11 +424,23 @@ private fun KpiCard(
     }
 }
 
+/**
+ * Determina se lo studente è del biennio basandosi sul pianoStudi
+ */
+private fun isBiennioLevel(profile: com.laba.firenze.domain.model.StudentProfile?): Boolean {
+    val pianoStudi = profile?.pianoStudi?.lowercase() ?: ""
+    return pianoStudi.contains("biennio") || 
+           pianoStudi.contains("ii livello") || 
+           pianoStudi.contains("2° livello") || 
+           pianoStudi.contains("secondo livello")
+}
+
 // MARK: - Year Progress and Average Section
 @Composable
 private fun YearProgressAndAverageSection(
     yearProgress: YearProgress?,
     careerAverage: Double?,
+    isBiennio: Boolean,
     onNavigateToGrades: () -> Unit
 ) {
     Card(
@@ -446,11 +460,12 @@ private fun YearProgressAndAverageSection(
                 fontWeight = FontWeight.Bold
             )
             
-            // Year progress (1st, 2nd, 3rd year)
+            // Year progress (1st, 2nd, 3rd year - solo 1° e 2° per biennio)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                for (year in 1..3) {
+                val maxYear = if (isBiennio) 2 else 3
+                for (year in 1..maxYear) {
                     YearProgressCard(
                         year = year,
                         progress = yearProgress?.getProgressForYear(year) ?: 0.0,

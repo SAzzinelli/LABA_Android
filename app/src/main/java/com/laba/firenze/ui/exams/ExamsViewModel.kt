@@ -54,6 +54,10 @@ class ExamsViewModel @Inject constructor(
         return profile?.currentYear?.toIntOrNull()
     }
     
+    fun getCurrentProfile(): StudentProfile? {
+        return sessionRepository.getUserProfileFlow().value
+    }
+    
     fun getExamById(examId: String): Esame? {
         val exams = _uiState.value.allExams
         

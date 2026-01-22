@@ -78,11 +78,26 @@ fun CoursesScreen(
         )
         
         // Year Filter (pillole senza sfondo)
+        // Determina se è biennio o triennio
+        val profile = viewModel.getUserProfile()
+        val isBiennio = profile?.pianoStudi?.lowercase()?.let { piano: String ->
+            piano.contains("biennio") || 
+            piano.contains("ii livello") || 
+            piano.contains("2° livello") || 
+            piano.contains("secondo livello")
+        } ?: false
+        
+        val yearFilters = if (isBiennio) {
+            listOf("Tutti", "1° Anno", "2° Anno")
+        } else {
+            listOf("Tutti", "1° Anno", "2° Anno", "3° Anno")
+        }
+        
         LazyRow(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(listOf("Tutti", "1° Anno", "2° Anno", "3° Anno")) { year ->
+            items(yearFilters) { year ->
                 FilterChip(
                     onClick = { viewModel.updateYearFilter(year) },
                     label = { Text(year) },

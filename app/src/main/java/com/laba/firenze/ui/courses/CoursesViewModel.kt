@@ -90,6 +90,10 @@ class CoursesViewModel @Inject constructor(
             sessionRepository.loadAll()
         }
     }
+    
+    fun getUserProfile(): com.laba.firenze.domain.model.StudentProfile? {
+        return sessionRepository.getUserProfileFlow().value
+    }
 }
 
 data class CoursesUiState(
