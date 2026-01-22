@@ -629,7 +629,8 @@ class HomeViewModel @Inject constructor(
         val ps = pianoStudi.lowercase()
         return when {
             ps.contains("fashion") -> "Fashion Design"
-            ps.contains("interior") || ps.contains("interni") || ps.contains("architettura") -> "Architettura degli Interni"
+            ps.contains("interior") || ps.contains("interni") -> "Interior Design"
+            ps.contains("architettura") && !ps.contains("interior") && !ps.contains("interni") -> "Architettura degli Interni"
             ps.contains("cinema") || ps.contains("audiovisiv") -> "Cinema"
             ps.contains("regia") || ps.contains("videomaking") -> "Regia"
             ps.contains("graphic") || ps.contains("grafica") || ps.contains("multimedia") -> "Graphic Design"

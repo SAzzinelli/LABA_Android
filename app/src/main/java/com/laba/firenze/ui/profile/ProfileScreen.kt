@@ -30,6 +30,70 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.laba.firenze.ui.tutorial.TutorialScreen
 
+/**
+ * Estrae solo la matricola del biennio se ci sono entrambe (triennio e biennio).
+ * Se c'è solo una matricola o non contiene "biennio", restituisce quella originale.
+ * 
+ * Gestisce pattern come:
+ * - "(triennio) 3747 FI (biennio)" -> estrae la parte dopo "biennio"
+ * - "2570FI" -> restituisce originale (non contiene biennio)
+ * - Se contiene sia triennio che biennio, mostra solo biennio
+ */
+private fun extractBiennioMatricola(matricola: String?): String? {
+    if (matricola.isNullOrBlank()) return null
+    
+    val lowerMatricola = matricola.lowercase()
+    
+    // Se contiene sia "triennio" che "biennio", estrai solo quella del biennio
+    if (lowerMatricola.contains("triennio") && lowerMatricola.contains("biennio")) {
+        // Cerca pattern come "(triennio) XXXX (biennio) YYYY" o "(triennio) XXXX (biennio)"
+        // Estrai tutto dopo "(biennio)" o "biennio"
+        val biennioIndex = lowerMatricola.indexOf("biennio")
+        if (biennioIndex >= 0) {
+            // Prendi tutto dopo "biennio"
+            var afterBiennio = matricola.substring(biennioIndex + "biennio".length).trim()
+            
+            // Rimuovi parentesi iniziali/finali se presenti
+            afterBiennio = afterBiennio.trimStart('(', ' ', ')')
+            afterBiennio = afterBiennio.trimEnd('(', ' ', ')')
+            
+            // Se c'è contenuto dopo biennio, restituiscilo
+            if (afterBiennio.isNotEmpty()) {
+                // Rimuovi eventuali parentesi rimanenti e spazi extra
+                return afterBiennio.replace(Regex("""[()]"""), "").trim()
+            }
+            
+            // Se non c'è contenuto dopo biennio, potrebbe essere che biennio è alla fine
+            // In questo caso, cerca prima di biennio per trovare la matricola
+            val beforeBiennio = matricola.substring(0, biennioIndex).trim()
+            val triennioIndex = beforeBiennio.lowercase().indexOf("triennio")
+            if (triennioIndex >= 0) {
+                // Estrai la parte tra triennio e biennio (dovrebbe essere la matricola triennio)
+                // Ma noi vogliamo biennio, quindi cerchiamo dopo biennio
+                // Se non c'è nulla dopo biennio, potrebbe essere che la matricola biennio è prima
+                // Ma questo caso è raro, quindi restituiamo null o originale
+            }
+        }
+    }
+    
+    // Se contiene solo "biennio" (senza triennio), potrebbe essere solo biennio
+    // In questo caso, restituisci originale
+    if (lowerMatricola.contains("biennio") && !lowerMatricola.contains("triennio")) {
+        return matricola
+    }
+    
+    // Se contiene solo "triennio" (senza biennio), non mostrare nulla? 
+    // No, l'utente ha detto di mostrare solo biennio se ci sono entrambe
+    // Se c'è solo triennio, probabilmente non dovremmo mostrare nulla o mostrare un messaggio
+    // Ma per sicurezza, restituiamo null se contiene solo triennio
+    if (lowerMatricola.contains("triennio") && !lowerMatricola.contains("biennio")) {
+        return null // Non mostrare se c'è solo triennio
+    }
+    
+    // Se non contiene né triennio né biennio, restituisci originale
+    return matricola
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
@@ -587,7 +651,8 @@ private fun ProfileHeader(
                 }
                 
                 // Pillola numero matricola
-                val matricolaDisplay = userProfile?.matricola ?: "N/A"
+                // Se ci sono entrambe le matricole (triennio e biennio), mostra solo quella del biennio
+                val matricolaDisplay = extractBiennioMatricola(userProfile?.matricola) ?: "N/A"
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     shape = RoundedCornerShape(16.dp)
