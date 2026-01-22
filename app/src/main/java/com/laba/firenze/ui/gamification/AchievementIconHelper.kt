@@ -13,7 +13,8 @@ object AchievementIconHelper {
      * Converte un nome SF Symbol in un'icona Material Android
      */
     fun getIconForSFSymbol(sfSymbol: String): ImageVector {
-        return when (sfSymbol.lowercase()) {
+        val lowerSymbol = sfSymbol.lowercase()
+        val icon = when (lowerSymbol) {
             // Primi Passi
             "hand.wave.fill", "hand.wave" -> Icons.Default.WavingHand
             "arrow.down.circle.fill", "arrow.down.circle" -> Icons.Default.Download
@@ -77,7 +78,11 @@ object AchievementIconHelper {
             "trophy.fill", "trophy" -> Icons.Default.EmojiEvents
             
             // Default fallback
-            else -> Icons.Default.Star
+            else -> {
+                android.util.Log.w("AchievementIconHelper", "⚠️ Icon not mapped: '$sfSymbol', using default star icon")
+                Icons.Default.Star
+            }
         }
+        return icon
     }
 }

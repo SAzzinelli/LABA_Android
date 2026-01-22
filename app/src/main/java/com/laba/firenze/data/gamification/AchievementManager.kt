@@ -1000,34 +1000,45 @@ class AchievementManager @Inject constructor(
         scope.launch {
             val currentList = _achievements.value.toMutableList()
             val index = currentList.indexOfFirst { it.id == achievementID }
-            if (index != -1 && !currentList[index].isUnlocked) {
-                val achievement = currentList[index]
-                currentList[index] = achievement.copy(
-                    isUnlocked = true,
-                    unlockedDate = unlockedDate ?: System.currentTimeMillis(),
-                    progress = achievement.maxProgress
-                )
-                _achievements.value = currentList
-                
-                // Update stats (points)
-                val pointsToAdd = achievement.points
-                _stats.value = _stats.value.copy(
-                    totalPoints = _stats.value.totalPoints + pointsToAdd,
-                    achievementUnlockDates = _stats.value.achievementUnlockDates + listOf(unlockedDate ?: System.currentTimeMillis())
-                )
-                
-                // Mark as notified se già notificato in passato (per evitare banner duplicati)
-                if (silent && !_stats.value.notifiedAchievements.contains(achievementID)) {
-                    _stats.value = _stats.value.copy(
-                        notifiedAchievements = _stats.value.notifiedAchievements + achievementID
-                    )
-                }
-                
-                saveAchievements()
-                saveStats()
-                
-                Log.d("AchievementManager", "✅ Restored achievement '$achievementID' (silent=$silent)")
+            if (index == -1) {
+                Log.d("AchievementManager", "⚠️ Achievement '$achievementID' not found")
+                return@launch
             }
+            
+            val achievement = currentList[index]
+            
+            // Se è già sbloccato, non fare nulla (evita doppia somma punti)
+            if (achievement.isUnlocked) {
+                Log.d("AchievementManager", "⚠️ Achievement '$achievementID' already unlocked locally, skipping restore to avoid duplicate points")
+                return@launch
+            }
+            
+            // Sblocca l'achievement
+            currentList[index] = achievement.copy(
+                isUnlocked = true,
+                unlockedDate = unlockedDate ?: System.currentTimeMillis(),
+                progress = achievement.maxProgress
+            )
+            _achievements.value = currentList
+            
+            // Update stats (points) - SOLO se non era già sbloccato
+            val pointsToAdd = achievement.points
+            _stats.value = _stats.value.copy(
+                totalPoints = _stats.value.totalPoints + pointsToAdd,
+                achievementUnlockDates = _stats.value.achievementUnlockDates + listOf(unlockedDate ?: System.currentTimeMillis())
+            )
+            
+            // Mark as notified se già notificato in passato (per evitare banner duplicati)
+            if (silent && !_stats.value.notifiedAchievements.contains(achievementID)) {
+                _stats.value = _stats.value.copy(
+                    notifiedAchievements = _stats.value.notifiedAchievements + achievementID
+                )
+            }
+            
+            saveAchievements()
+            saveStats()
+            
+            Log.d("AchievementManager", "✅ Restored achievement '$achievementID' (silent=$silent, +$pointsToAdd pts)")
         }
     }
     
