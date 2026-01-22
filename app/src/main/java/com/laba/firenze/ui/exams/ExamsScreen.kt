@@ -56,12 +56,21 @@ fun ExamsScreen(
     
     // Determina se è biennio o triennio
     val profile = viewModel.getCurrentProfile()
-    val isBiennio = profile?.pianoStudi?.lowercase()?.let { piano ->
-        piano.contains("biennio") || 
-        piano.contains("ii livello") || 
-        piano.contains("2° livello") || 
-        piano.contains("secondo livello")
-    } ?: false
+    val isBiennio = if (profile != null) {
+        val pianoStudi = profile.pianoStudi?.lowercase() ?: ""
+        val matricola = profile.matricola?.lowercase() ?: ""
+        
+        val pianoContainsBiennio = pianoStudi.contains("biennio") || 
+                                   pianoStudi.contains("ii livello") || 
+                                   pianoStudi.contains("2° livello") || 
+                                   pianoStudi.contains("secondo livello")
+        
+        val hasOnlyBiennio = matricola.contains("biennio") && !matricola.contains("triennio")
+        
+        pianoContainsBiennio || hasOnlyBiennio
+    } else {
+        false
+    }
     
     val years = if (isBiennio) listOf(1, 2) else listOf(1, 2, 3)
     val keyboardController = LocalSoftwareKeyboardController.current

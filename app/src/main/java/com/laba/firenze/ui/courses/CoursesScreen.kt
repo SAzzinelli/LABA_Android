@@ -80,12 +80,21 @@ fun CoursesScreen(
         // Year Filter (pillole senza sfondo)
         // Determina se è biennio o triennio
         val profile = viewModel.getUserProfile()
-        val isBiennio = profile?.pianoStudi?.lowercase()?.let { piano: String ->
-            piano.contains("biennio") || 
-            piano.contains("ii livello") || 
-            piano.contains("2° livello") || 
-            piano.contains("secondo livello")
-        } ?: false
+        val isBiennio = if (profile != null) {
+            val pianoStudi = profile.pianoStudi?.lowercase() ?: ""
+            val matricola = profile.matricola?.lowercase() ?: ""
+            
+            val pianoContainsBiennio = pianoStudi.contains("biennio") || 
+                                       pianoStudi.contains("ii livello") || 
+                                       pianoStudi.contains("2° livello") || 
+                                       pianoStudi.contains("secondo livello")
+            
+            val hasOnlyBiennio = matricola.contains("biennio") && !matricola.contains("triennio")
+            
+            pianoContainsBiennio || hasOnlyBiennio
+        } else {
+            false
+        }
         
         val yearFilters = if (isBiennio) {
             listOf("Tutti", "1° Anno", "2° Anno")

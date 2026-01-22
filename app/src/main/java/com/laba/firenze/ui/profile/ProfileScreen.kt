@@ -39,28 +39,40 @@ import com.laba.firenze.ui.tutorial.TutorialScreen
 private fun parseMatricole(matricola: String?): Pair<String?, String?> {
     if (matricola.isNullOrBlank()) return Pair(null, null)
     
+    android.util.Log.d("ProfileScreen", "Parsing matricola: '$matricola'")
+    
     val lowerMatricola = matricola.lowercase()
     var triennio: String? = null
     var biennio: String? = null
+    
+    // Pattern per estrarre numeri dopo "triennio" o "biennio"
+    // Esempi: "triennio 3747 FI", "biennio 1234 AB", "triennio (3747 FI) biennio (5678 CD)"
     
     // Se contiene "triennio"
     if (lowerMatricola.contains("triennio")) {
         val triennioIndex = lowerMatricola.indexOf("triennio")
         // Cerca la matricola dopo "triennio"
         var afterTriennio = matricola.substring(triennioIndex + "triennio".length).trim()
-        // Rimuovi parentesi iniziali
+        
+        // Rimuovi parentesi iniziali e spazi
         afterTriennio = afterTriennio.trimStart('(', ' ', ')')
         
         // Se c'è "biennio" dopo, estrai fino a lì
         val biennioIndexInAfter = afterTriennio.lowercase().indexOf("biennio")
         if (biennioIndexInAfter >= 0) {
+            // C'è biennio dopo, estrai solo la parte fino a biennio
             triennio = afterTriennio.substring(0, biennioIndexInAfter).trim()
-            // Rimuovi parentesi finali
-            triennio = triennio.trimEnd('(', ' ', ')').replace(Regex("""[()]"""), "").trim()
         } else {
-            // Non c'è biennio dopo, prendi tutto
-            triennio = afterTriennio.replace(Regex("""[()]"""), "").trim()
+            // Non c'è biennio dopo, prendi tutto fino alla fine o fino a parentesi di chiusura
+            triennio = afterTriennio.trim()
         }
+        
+        // Pulisci la matricola triennio: rimuovi parentesi e spazi extra
+        triennio = triennio?.replace(Regex("""[()]"""), "")?.trim()
+        // Rimuovi eventuali caratteri non alfanumerici all'inizio/fine se non necessari
+        triennio = triennio?.takeIf { it.isNotBlank() }
+        
+        android.util.Log.d("ProfileScreen", "Extracted triennio: '$triennio'")
     }
     
     // Se contiene "biennio"
@@ -68,10 +80,27 @@ private fun parseMatricole(matricola: String?): Pair<String?, String?> {
         val biennioIndex = lowerMatricola.indexOf("biennio")
         // Cerca la matricola dopo "biennio"
         var afterBiennio = matricola.substring(biennioIndex + "biennio".length).trim()
-        // Rimuovi parentesi iniziali
+        
+        // Rimuovi parentesi iniziali e spazi
         afterBiennio = afterBiennio.trimStart('(', ' ', ')')
-        // Rimuovi parentesi finali e spazi
-        biennio = afterBiennio.replace(Regex("""[()]"""), "").trim()
+        
+        // Se c'è altro testo dopo (es. altre parole), prendi solo fino al prossimo spazio significativo
+        // Ma prima prova a estrarre un pattern tipo "1234 AB" o "1234"
+        val biennioPattern = Regex("""([A-Z0-9\s]+)""")
+        val match = biennioPattern.find(afterBiennio)
+        if (match != null) {
+            biennio = match.value.trim()
+        } else {
+            // Se non c'è pattern, prendi tutto fino alla fine
+            biennio = afterBiennio.trim()
+        }
+        
+        // Pulisci la matricola biennio: rimuovi parentesi e spazi extra
+        biennio = biennio?.replace(Regex("""[()]"""), "")?.trim()
+        // Rimuovi eventuali caratteri non alfanumerici all'inizio/fine se non necessari
+        biennio = biennio?.takeIf { it.isNotBlank() && it.length > 1 } // Almeno 2 caratteri
+        
+        android.util.Log.d("ProfileScreen", "Extracted biennio: '$biennio'")
     }
     
     // Se non contiene né triennio né biennio, potrebbe essere una sola matricola
@@ -79,11 +108,14 @@ private fun parseMatricole(matricola: String?): Pair<String?, String?> {
         // Restituisci come biennio se non contiene "triennio", altrimenti come triennio
         if (!lowerMatricola.contains("triennio")) {
             biennio = matricola.trim()
+            android.util.Log.d("ProfileScreen", "No keywords found, assuming biennio: '$biennio'")
         } else {
             triennio = matricola.trim()
+            android.util.Log.d("ProfileScreen", "No keywords found, assuming triennio: '$triennio'")
         }
     }
     
+    android.util.Log.d("ProfileScreen", "Final result - Triennio: '$triennio', Biennio: '$biennio'")
     return Pair(triennio, biennio)
 }
 

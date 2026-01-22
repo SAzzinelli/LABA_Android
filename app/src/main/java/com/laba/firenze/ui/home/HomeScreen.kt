@@ -425,14 +425,29 @@ private fun KpiCard(
 }
 
 /**
- * Determina se lo studente è del biennio basandosi sul pianoStudi
+ * Determina se lo studente è del biennio basandosi sul pianoStudi e sulla matricola
  */
 private fun isBiennioLevel(profile: com.laba.firenze.domain.model.StudentProfile?): Boolean {
-    val pianoStudi = profile?.pianoStudi?.lowercase() ?: ""
-    return pianoStudi.contains("biennio") || 
-           pianoStudi.contains("ii livello") || 
-           pianoStudi.contains("2° livello") || 
-           pianoStudi.contains("secondo livello")
+    if (profile == null) return false
+    
+    val pianoStudi = profile.pianoStudi?.lowercase() ?: ""
+    val matricola = profile.matricola?.lowercase() ?: ""
+    
+    // Controlla nel pianoStudi
+    val pianoContainsBiennio = pianoStudi.contains("biennio") || 
+                               pianoStudi.contains("ii livello") || 
+                               pianoStudi.contains("2° livello") || 
+                               pianoStudi.contains("secondo livello")
+    
+    // Controlla nella matricola (se contiene "biennio" e non "triennio", è biennio)
+    val matricolaContainsBiennio = matricola.contains("biennio") && !matricola.contains("triennio")
+    
+    // Se ha solo biennio nella matricola (senza triennio), è biennio
+    val hasOnlyBiennio = matricola.contains("biennio") && !matricola.contains("triennio")
+    
+    val result = pianoContainsBiennio || hasOnlyBiennio
+    android.util.Log.d("HomeScreen", "isBiennioLevel - pianoStudi: '$pianoStudi', matricola: '$matricola', result: $result")
+    return result
 }
 
 // MARK: - Year Progress and Average Section
