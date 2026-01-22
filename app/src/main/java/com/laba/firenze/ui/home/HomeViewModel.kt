@@ -110,37 +110,57 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
     
+    // Flag per tracciare se i dati sono già stati caricati
+    private var hasLoadedData = false
+    
     init {
         // Load lessons cache
         lessonCalendarRepository.loadCacheIfAvailable()
         loadData()
+        hasLoadedData = true
     }
     
     fun refreshOnAppear() {
         viewModelScope.launch {
+            // Controlla se i dati sono già stati caricati guardando se il profilo esiste
+            val profile = sessionRepository.getUserProfileFlow().value
+            val exams = sessionRepository.allExams.value
+            
+            // Se i dati sono già stati caricati (profilo e esami esistono), non ricaricare
+            if (hasLoadedData && profile != null && exams.isNotEmpty()) {
+                // Solo track section visit senza ricaricare i dati
+                achievementManager.trackSectionVisit("home")
+                return@launch
+            }
+            
             // Carica tutti i dati e aspetta il completamento
             sessionRepository.loadAll()
             
-            // Track achievements
-            achievementManager.trackDataLoad()
-            achievementManager.trackLogin()
+            // Track achievements solo al primo caricamento
+            if (!hasLoadedData) {
+                achievementManager.trackDataLoad()
+                achievementManager.trackLogin()
+            }
             
             // Track section visit
             achievementManager.trackSectionVisit("home")
             
-            // Sync lessons
-            val profile = sessionRepository.getUserProfileFlow().value
-            val pianoStudi = profile?.pianoStudi
-            val currentYear = profile?.currentYear?.toIntOrNull()
-            lessonCalendarRepository.syncLessons(pianoStudi, currentYear, force = true)
+            // Sync lessons (solo se necessario)
+            val updatedProfile = sessionRepository.getUserProfileFlow().value
+            val pianoStudi = updatedProfile?.pianoStudi
+            val currentYear = updatedProfile?.currentYear?.toIntOrNull()
+            lessonCalendarRepository.syncLessons(pianoStudi, currentYear, force = !hasLoadedData)
             
             // Update achievements from session data
-            val exams = sessionRepository.allExams.value
+            val updatedExams = sessionRepository.allExams.value
             val seminars = sessionRepository.seminars.value
-            achievementManager.updateAchievements(exams, seminars, profile)
+            achievementManager.updateAchievements(updatedExams, seminars, updatedProfile)
             
-            // Forza il refresh dei dati
-            loadData()
+            // Forza il refresh dei dati solo se non erano già caricati
+            if (!hasLoadedData) {
+                loadData()
+                hasLoadedData = true
+            }
         }
     }
     

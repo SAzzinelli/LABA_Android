@@ -71,7 +71,7 @@ fun HomeScreen(
         contentPadding = PaddingValues(
             start = 20.dp, 
             end = 20.dp, 
-            top = 16.dp,
+            top = 60.dp, // Aumentato per evitare che il punch hole copra l'hero
             bottom = 140.dp
         ),
         verticalArrangement = Arrangement.spacedBy(24.dp)
