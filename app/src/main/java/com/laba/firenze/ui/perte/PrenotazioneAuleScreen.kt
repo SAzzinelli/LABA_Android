@@ -38,7 +38,8 @@ fun PrenotazioneAuleScreen(
     viewModel: PrenotazioneAuleViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val isAuthenticated by remember { derivedStateOf { viewModel.isAuthenticated } }
+    val token by viewModel.token.collectAsState(initial = "")
+    val isAuthenticated = token.isNotEmpty()
     val user by viewModel.user.collectAsState()
     var showWebView by remember { mutableStateOf(false) }
     var selectedRoomForSlots by remember { mutableStateOf<SuperSaasRoom?>(null) }

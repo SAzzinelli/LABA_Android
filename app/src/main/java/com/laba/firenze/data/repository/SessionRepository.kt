@@ -593,16 +593,20 @@ class SessionRepository @Inject constructor(
         }
     }
     
-    suspend fun downloadDocument(allegatoOid: String): ByteArray? {
+    suspend fun downloadDocument(allegatoOid: String, directUrl: String? = null): ByteArray? {
         return try {
             val token = tokenStore.getCurrentAccessToken()
             if (token.isEmpty()) {
                 Log.d("SessionRepository", "No access token available for document download")
                 return null
             }
-            
-            Log.d("SessionRepository", "Downloading document $allegatoOid with token: ${token.take(20)}...")
-            val documentData = apiClient.getDocumentById(token, allegatoOid)
+            // Se c'è un URL diretto valido (logosuni), prova prima quello
+            val documentData = if (!directUrl.isNullOrBlank() && directUrl.startsWith("http")) {
+                Log.d("SessionRepository", "Trying direct URL: $directUrl")
+                apiClient.getDocumentByUrl(token, directUrl) ?: apiClient.getDocumentById(token, allegatoOid)
+            } else {
+                apiClient.getDocumentById(token, allegatoOid)
+            }
             if (documentData != null) {
                 Log.d("SessionRepository", "Successfully downloaded document $allegatoOid (${documentData.size} bytes)")
             } else {

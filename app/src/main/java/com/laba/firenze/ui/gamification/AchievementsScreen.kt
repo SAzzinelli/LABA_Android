@@ -4,6 +4,9 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,6 +31,9 @@ import com.laba.firenze.ui.gamification.AchievementIconHelper
 import com.laba.firenze.ui.home.HomeViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -288,13 +294,14 @@ fun MetricCard(
 }
 
 @Composable
-private fun CFAppIcon(modifier: Modifier = Modifier) {
+private fun CFAppIcon(
+    modifier: Modifier = Modifier,
+    tint: Color? = null
+) {
+    val bgColor = tint ?: MaterialTheme.colorScheme.primary
     Box(
         modifier = modifier
-            .background(
-                MaterialTheme.colorScheme.primary,
-                MaterialTheme.shapes.small
-            ),
+            .background(bgColor, MaterialTheme.shapes.small),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -424,18 +431,13 @@ fun AchievementRow(
             
             // Points Badge (CFApp, come iOS)
             if (achievement.isUnlocked) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = "${achievement.points}",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(achievement.category.colorHex)
-                    )
-                    CFAppIcon(modifier = Modifier.size(18.dp))
-                }
+                val categoryColor = Color(achievement.category.colorHex)
+                Text(
+                    text = "${achievement.points}¢",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = categoryColor
+                )
             }
         }
     }
@@ -612,113 +614,165 @@ private fun CFAppInfoDialog(onDismiss: () -> Unit) {
     )
 }
 
-// Achievement Detail Dialog
+// Achievement Detail Sheet (come iOS)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AchievementDetailDialog(
     achievement: Achievement,
     onDismiss: () -> Unit,
     @Suppress("UNUSED_PARAMETER") stats: com.laba.firenze.domain.model.UserStats
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = achievement.title,
-                style = MaterialTheme.typography.headlineSmall
-            )
-        },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+    val categoryColor = Color(achievement.category.colorHex)
+    val scrollState = rememberScrollState()
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(scrollState)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp)
+        ) {
+            // Hero icon (come iOS)
+            Box(
+                modifier = Modifier
+                    .size(150.dp)
+                    .align(Alignment.CenterHorizontally)
+                    .background(
+                        if (achievement.isUnlocked) categoryColor else Color.Gray,
+                        RoundedCornerShape(75.dp)
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                // Icon
-                Box(
-                    modifier = Modifier
-                        .size(100.dp)
-                        .fillMaxWidth()
-                        .background(
-                            if (achievement.isUnlocked)
-                                Color(achievement.category.colorHex).copy(alpha = 0.2f)
-                            else
-                                Color.Gray.copy(alpha = 0.1f),
-                            MaterialTheme.shapes.large
-                        ),
-                    contentAlignment = Alignment.Center
+                Icon(
+                    imageVector = AchievementIconHelper.getIconForSFSymbol(achievement.icon),
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(60.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Rarity badge
+            Row(
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = achievement.rarity.emoji, fontSize = 24.sp)
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = Color(achievement.rarity.colorHex).copy(alpha = 0.15f)
                 ) {
-                    Icon(
-                        imageVector = AchievementIconHelper.getIconForSFSymbol(achievement.icon),
-                        contentDescription = null,
-                        tint = Color(achievement.category.colorHex),
-                        modifier = Modifier.size(48.dp)
+                    Text(
+                        text = achievement.rarity.displayName,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = Color(achievement.rarity.colorHex),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
-                
-                // Description
-                Text(
-                    text = achievement.description,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                
-                // Stats
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Title
+            Text(
+                text = achievement.title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Description
+            Text(
+                text = achievement.description,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Stats (CFApp + Categoria, come iOS)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CFAppIcon(modifier = Modifier.size(32.dp), tint = categoryColor)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "${achievement.points}",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = AchievementIconHelper.getIconForSFSymbol(achievement.category.iconName),
+                        contentDescription = null,
+                        tint = categoryColor,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = achievement.category.displayName,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Progress (se applicabile)
+            if (achievement.maxProgress > 1) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            MaterialTheme.colorScheme.surfaceContainerHighest,
+                            RoundedCornerShape(16.dp)
+                        )
+                        .padding(16.dp)
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Default.Star,
-                            contentDescription = null,
-                            tint = Color(0xFFFFD700)
-                        )
-                        Text(
-                            text = "${achievement.points}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "CFApp",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = achievement.rarity.emoji,
-                            fontSize = 24.sp
-                        )
-                        Text(
-                            text = achievement.rarity.displayName,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        Text(
-                            text = "Rarità",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Text(
+                        text = "Progresso",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LinearProgressIndicator(
+                        progress = { achievement.progressPercentage.toFloat() },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = categoryColor
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "${achievement.progress}/${achievement.maxProgress}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-                
-                // Progress (if applicable)
-                if (achievement.maxProgress > 1) {
-                    Column {
-                        Text(
-                            text = "Progresso",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Unlock status card (come iOS: sfondo verde/orange, icona + titolo + data)
+            if (achievement.isUnlocked) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Color(0xFF4CAF50).copy(alpha = 0.1f),
+                            RoundedCornerShape(16.dp)
                         )
-                        LinearProgressIndicator(
-                            progress = { achievement.progressPercentage.toFloat() },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Text(
-                            text = "${achievement.progress}/${achievement.maxProgress}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                
-                // Unlock status
-                if (achievement.isUnlocked) {
+                        .padding(16.dp)
+                ) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -726,55 +780,87 @@ fun AchievementDetailDialog(
                         Icon(
                             Icons.Default.CheckCircle,
                             contentDescription = null,
-                            tint = Color(0xFF4CAF50)
+                            tint = Color(0xFF4CAF50),
+                            modifier = Modifier.size(24.dp)
                         )
                         Text(
                             text = "Sbloccato!",
-                            style = MaterialTheme.typography.titleSmall,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
                             color = Color(0xFF4CAF50)
                         )
                     }
                     achievement.unlockedDate?.let { timestamp: Long ->
-                        val date = java.util.Date(timestamp)
-                        val dateStr = java.text.SimpleDateFormat(
-                            "dd MMMM yyyy, HH:mm",
-                            java.util.Locale.getDefault()
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val date = Date(timestamp)
+                        val dateStr = SimpleDateFormat(
+                            "d MMMM yyyy, HH:mm",
+                            Locale.ITALIAN
                         ).format(date)
                         Text(
                             text = "il $dateStr",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                } else {
-                    Column {
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Color(0xFFFF9800).copy(alpha = 0.1f),
+                            RoundedCornerShape(16.dp)
+                        )
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = Color(0xFFFF9800),
+                            modifier = Modifier.size(24.dp)
+                        )
                         Text(
                             text = "Come sbloccare",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFF9800)
                         )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = achievement.hint ?: achievement.description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (achievement.progress > 0) {
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = achievement.hint ?: achievement.description,
-                            style = MaterialTheme.typography.bodyMedium
+                            text = "Progresso: ${(achievement.progressPercentage * 100).toInt()}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFF9800)
                         )
-                        if (achievement.progress > 0) {
-                            Text(
-                                text = "Progresso: ${(achievement.progressPercentage * 100).toInt()}%",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Pulsante Chiudi
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Chiudi")
             }
         }
-    )
+    }
 }
 
 @HiltViewModel

@@ -56,9 +56,9 @@ class DocumentsViewModel @Inject constructor(
         }
     }
     
-    suspend fun downloadDocument(allegatoOid: String): ByteArray? {
+    suspend fun downloadDocument(allegatoOid: String, directUrl: String? = null): ByteArray? {
         return try {
-            sessionRepository.downloadDocument(allegatoOid)
+            sessionRepository.downloadDocument(allegatoOid, directUrl)
         } catch (e: Exception) {
             null
         }

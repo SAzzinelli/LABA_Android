@@ -127,7 +127,7 @@ fun AgevolazioniScreen(navController: androidx.navigation.NavController) {
                         }
                         
                         items(partners) { partner ->
-                            PartnerCard(partner = partner)
+                            PartnerCard(partner = partner, navController = navController)
                             Spacer(modifier = Modifier.height(12.dp))
                         }
                     }
@@ -208,7 +208,10 @@ fun CategoryFilterBar(
 }
 
 @Composable
-fun PartnerCard(partner: StudentBenefitPartner) {
+fun PartnerCard(
+    partner: StudentBenefitPartner,
+    navController: androidx.navigation.NavController
+) {
     var expanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
     
@@ -329,12 +332,12 @@ fun PartnerCard(partner: StudentBenefitPartner) {
                                 )
                             }
                             
-                            // "Usa agevolazione" Button
+                            // "Usa agevolazione" Button - identico a iOS: naviga a BenefitRedeemScreen
                             Button(
-                                onClick = { 
-                                    // Navigate to Student Card (or BenefitRedeemView if implemented separate)
-                                    // For now, we don't have direct nav access here unless passed
-                                    // But implementing visual logic first
+                                onClick = {
+                                    navController.navigate("benefit_redeem/${partner.id}") {
+                                        launchSingleTop = true
+                                    }
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()

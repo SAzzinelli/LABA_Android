@@ -43,6 +43,7 @@ import com.laba.firenze.ui.notifications.NotificationSettingsScreen
 import com.laba.firenze.ui.notifications.InboxNotificationsScreen
 import com.laba.firenze.ui.appearance.AppearanceSettingsScreen
 import com.laba.firenze.ui.benefits.AgevolazioniScreen
+import com.laba.firenze.ui.benefits.BenefitRedeemScreen
 import com.laba.firenze.ui.profile.StudentCardScreen
 import com.laba.firenze.ui.profile.ServiziScreen
 import com.laba.firenze.ui.profile.AnagraficaScreen
@@ -56,6 +57,7 @@ import com.laba.firenze.ui.gamification.YearRecapScreen
 import com.laba.firenze.ui.gamification.AchievementUnlockedToast
 import com.laba.firenze.ui.gamification.AchievementDetailDialog
 import com.laba.firenze.ui.lessons.LessonDetailScreen
+import android.net.Uri
 import com.laba.firenze.domain.model.Achievement
 import com.laba.firenze.MainActivityViewModel
 
@@ -274,10 +276,13 @@ fun LABANavigation(
             composable("handouts") {
                 DispenseScreen(navController)
             }
-            composable("document_viewer/{allegatoOid}/{title}") { backStackEntry ->
+            composable("document_viewer/{allegatoOid}/{title}/{directUrl}") { backStackEntry ->
                 val allegatoOid = backStackEntry.arguments?.getString("allegatoOid") ?: ""
-                val title = backStackEntry.arguments?.getString("title") ?: ""
-                DocumentViewerScreen(navController, allegatoOid, title)
+                val title = Uri.decode(backStackEntry.arguments?.getString("title") ?: "")
+                val directUrlEnc = backStackEntry.arguments?.getString("directUrl")
+                val directUrl = if (directUrlEnc.isNullOrBlank() || directUrlEnc == "_") null
+                    else Uri.decode(directUrlEnc)
+                DocumentViewerScreen(navController, allegatoOid, title, directUrl)
             }
             
             // Notification Settings
@@ -303,9 +308,6 @@ fun LABANavigation(
                 com.laba.firenze.ui.appearance.AnimationSettingsScreen(navController)
             }
 
-            composable("home_section_order") {
-                com.laba.firenze.ui.home.HomeSectionOrderScreen(navController)
-            }
             composable("navigation_custom") {
                 com.laba.firenze.ui.appearance.NavigationCustomizationScreen(
                     navController = navController,
@@ -316,6 +318,16 @@ fun LABANavigation(
             // New Features
             composable(LABANavigation.Benefits.route) {
                 AgevolazioniScreen(navController)
+            }
+            composable(
+                route = "benefit_redeem/{partnerId}",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 4 }, animationSpec = tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 4 }, animationSpec = tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) }
+            ) { backStackEntry ->
+                val partnerId = backStackEntry.arguments?.getString("partnerId") ?: ""
+                BenefitRedeemScreen(partnerId = partnerId, navController = navController)
             }
             composable("student_card") {
                 StudentCardScreen(navController)

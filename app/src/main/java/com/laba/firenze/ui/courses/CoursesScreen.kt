@@ -212,12 +212,6 @@ private fun CourseCard(
     course: com.laba.firenze.domain.model.Esame,
     onClick: () -> Unit
 ) {
-    val yearTint = when (course.anno?.toIntOrNull()) {
-        1 -> Color(0xFFE3F2FD)
-        2 -> Color(0xFFE8F5E9)
-        3 -> Color(0xFFFFF3E0)
-        else -> Color(0xFFF3E5F5)
-    }
     Card(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
@@ -256,8 +250,7 @@ private fun CourseCard(
                             3 -> "3° anno"
                             else -> "$anno° anno"
                         },
-                        kind = com.laba.firenze.ui.common.PillKind.YEAR,
-                        tintOverride = yearTint
+                        kind = com.laba.firenze.ui.common.PillKind.YEAR
                     )
                 }
                 course.cfa?.takeIf { it.isNotBlank() }?.let { cfa ->

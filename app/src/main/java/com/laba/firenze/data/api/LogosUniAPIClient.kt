@@ -318,36 +318,56 @@ class LogosUniAPIClient @Inject constructor(
     
     suspend fun getDocumentById(token: String, allegatoOid: String): ByteArray? {
         return withContext(Dispatchers.IO) {
-            try {
-                val response = apiService.getDocumentById("Bearer $token", allegatoOid)
-                if (response.isSuccessful) {
-                    val responseBody = response.body()
-                    if (responseBody != null) {
-                        val bytes = responseBody.bytes()
-                        responseBody.close()
+            // Base URLs come iOS APIConfig (senza trailing slash per concatenazione)
+            val v2Base = "https://logosuni.laba.biz/api/api"
+            val v3Base = "https://logosuni.laba.biz/api-test/api"
+            val bases = listOf(v2Base, v3Base)
+            var lastError: Exception? = null
+            for (base in bases) {
+                try {
+                    val urlStr = "$base/Documents/GetDocument?id=$allegatoOid"
+                    val conn = URL(urlStr).openConnection() as java.net.HttpURLConnection
+                    conn.requestMethod = "GET"
+                    conn.setRequestProperty("Authorization", "Bearer $token")
+                    conn.setRequestProperty("Accept", "application/pdf, application/octet-stream, */*")
+                    conn.connectTimeout = 15_000
+                    conn.readTimeout = 30_000
+                    conn.connect()
+                    if (conn.responseCode in 200..299) {
+                        val bytes = conn.inputStream.use { it.readBytes() }
+                        conn.disconnect()
                         return@withContext bytes
                     }
+                    lastError = Exception("HTTP ${conn.responseCode}")
+                } catch (e: Exception) {
+                    lastError = e
                 }
-                // Se v3 fallisce, prova v2 Documents (come iOS) - URL allineato a APIConfig
-                val version = context.getSharedPreferences("laba_preferences", Context.MODE_PRIVATE)
-                    .getString("laba.apiVersion", "v2") ?: "v2"
-                if (version == "v3") {
-                    try {
-                        val v2Url = "https://logosuni.laba.biz/api/api/Documents/GetDocument?id=$allegatoOid"
-                        val conn = URL(v2Url).openConnection() as java.net.HttpURLConnection
-                        conn.requestMethod = "GET"
-                        conn.setRequestProperty("Authorization", "Bearer $token")
-                        conn.setRequestProperty("Accept", "application/pdf, application/octet-stream, */*")
-                        conn.connectTimeout = 15_000
-                        conn.readTimeout = 30_000
-                        if (conn.responseCode in 200..299) {
-                            conn.inputStream.use { it.readBytes() }
-                        } else null
-                    } catch (_: Exception) {
-                        null
-                    }
-                } else null
+            }
+            android.util.Log.e("LogosUniAPIClient", "getDocumentById failed for $allegatoOid after trying all bases: ${lastError?.message}")
+            null
+        }
+    }
+
+    /** Scarica da URL diretto (es. doc.url da API) - per documenti con link esterno o logosuni */
+    suspend fun getDocumentByUrl(token: String, urlString: String): ByteArray? {
+        if (urlString.isBlank() || !urlString.startsWith("http")) return null
+        return withContext(Dispatchers.IO) {
+            try {
+                val conn = URL(urlString).openConnection() as java.net.HttpURLConnection
+                conn.requestMethod = "GET"
+                conn.setRequestProperty("Authorization", "Bearer $token")
+                conn.setRequestProperty("Accept", "application/pdf, application/octet-stream, */*")
+                conn.connectTimeout = 15_000
+                conn.readTimeout = 30_000
+                conn.connect()
+                if (conn.responseCode in 200..299) {
+                    conn.inputStream.use { it.readBytes() }
+                } else {
+                    android.util.Log.e("LogosUniAPIClient", "getDocumentByUrl failed: $urlString HTTP ${conn.responseCode}")
+                    null
+                }
             } catch (e: Exception) {
+                android.util.Log.e("LogosUniAPIClient", "getDocumentByUrl error: ${e.message}")
                 null
             }
         }

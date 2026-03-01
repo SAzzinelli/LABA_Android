@@ -210,9 +210,9 @@ fun ProgrammiScreen(
                                     document = doc,
                                     onClick = {
                                         try {
-                                            // Naviga al visualizzatore documenti
                                             val encodedTitle = Uri.encode(prettifyTitle(doc.titolo))
-                                            navController.navigate("document_viewer/${doc.oid}/$encodedTitle")
+                                            val directUrlParam = doc.url?.takeIf { it.startsWith("http") }?.let { Uri.encode(it) } ?: "_"
+                                            navController.navigate("document_viewer/${doc.oid}/$encodedTitle/$directUrlParam")
                                         } catch (e: Exception) {
                                             println("ProgrammiScreen: Error navigating to document viewer: ${e.message}")
                                         }

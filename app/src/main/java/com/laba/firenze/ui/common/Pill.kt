@@ -25,13 +25,13 @@ fun Pill(
     modifier: Modifier = Modifier
 ) {
     val baseColor = tintOverride ?: when (kind) {
-        PillKind.YEAR -> Color(0xFF007AFF)   // systemBlue
-        PillKind.GRADE -> Color(0xFF34C759)  // systemGreen
-        PillKind.CFA -> Color(0xFFFF9500)    // systemOrange
-        PillKind.STATUS -> Color(0xFFFF9500) // systemOrange
-        PillKind.ALERT -> Color(0xFFFF3B30)  // systemRed
+        PillKind.YEAR -> Color(0xFF1565C0)   // blue scuro, contrasto OK
+        PillKind.GRADE -> Color(0xFF2E7D32)  // green scuro
+        PillKind.CFA -> Color(0xFFE65100)    // arancione scuro, contrasto OK
+        PillKind.STATUS -> Color(0xFFE65100) // arancione scuro
+        PillKind.ALERT -> Color(0xFFC62828)  // red scuro
     }
-    val fillOpacity = 0.88f
+    val fillOpacity = 1f
     Box(
         modifier = modifier
             .background(

@@ -212,7 +212,7 @@ fun SeminarDetailScreen(
                     ) {
                         val titleEnc = Uri.encode(prettifyTitle(seminarTitle(seminar.titolo)))
                         TextButton(
-                            onClick = { navController.navigate("document_viewer/$oid/$titleEnc") }
+                            onClick = { navController.navigate("document_viewer/$oid/$titleEnc/_") }
                         ) {
                             Icon(Icons.Default.Description, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))

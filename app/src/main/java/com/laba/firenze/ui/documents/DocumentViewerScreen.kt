@@ -30,6 +30,7 @@ fun DocumentViewerScreen(
     navController: NavController,
     allegatoOid: String,
     title: String,
+    directUrl: String? = null,
     viewModel: DocumentsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -38,12 +39,12 @@ fun DocumentViewerScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var tempFileUri by remember { mutableStateOf<Uri?>(null) }
     
-    LaunchedEffect(allegatoOid) {
+    LaunchedEffect(allegatoOid, directUrl) {
         isLoading = true
         errorMessage = null
         
         try {
-            val documentData = viewModel.downloadDocument(allegatoOid)
+            val documentData = viewModel.downloadDocument(allegatoOid, directUrl)
             if (documentData != null) {
                 // Salva il file temporaneo
                 val tempFile = File(context.cacheDir, "LABA_${allegatoOid}_${sanitizeFileName(title)}.pdf")

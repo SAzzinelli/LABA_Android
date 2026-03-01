@@ -235,7 +235,6 @@ fun DispenseScreen(
                                     document = doc,
                                     onClick = {
                                         try {
-                                            // Track achievement
                                             viewModel.trackDispenseOpen(doc.oid)
                                             val title = if (!doc.descrizione.isNullOrBlank()) {
                                                 doc.descrizione
@@ -243,7 +242,8 @@ fun DispenseScreen(
                                                 doc.tipo ?: "Dispensa"
                                             }
                                             val encodedTitle = Uri.encode(prettifyTitle(title))
-                                            navController.navigate("document_viewer/${doc.oid}/$encodedTitle")
+                                            val directUrlParam = doc.url?.takeIf { it.startsWith("http") }?.let { Uri.encode(it) } ?: "_"
+                                            navController.navigate("document_viewer/${doc.oid}/$encodedTitle/$directUrlParam")
                                         } catch (e: Exception) {
                                             println("DispenseScreen: Error navigating to document viewer: ${e.message}")
                                         }

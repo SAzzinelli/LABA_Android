@@ -139,29 +139,6 @@ fun AppearanceSettingsScreen(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                         )
                     }
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { navController.navigate("home_section_order") },
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        ListItem(
-                            headlineContent = { Text("Ordine sezioni Home") },
-                            supportingContent = { Text("Trascina per riordinare le sezioni nella Home", style = MaterialTheme.typography.bodySmall) },
-                            leadingContent = {
-                                Icon(
-                                    Icons.Default.ViewList,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            },
-                            trailingContent = { Icon(Icons.Default.ChevronRight, null) },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                        )
-                    }
                 }
             }
 
