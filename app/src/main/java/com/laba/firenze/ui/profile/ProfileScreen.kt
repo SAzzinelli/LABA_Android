@@ -226,6 +226,11 @@ fun ProfileScreen(
         viewModel.trackSectionVisit("profile")
         viewModel.loadProfilePhotoFromSupabase()
     }
+    // Ricarica foto quando il profilo diventa disponibile (email da API può arrivare dopo keychain)
+    val profileEmail = uiState.userProfile?.emailLABA ?: uiState.userProfile?.emailPersonale
+    LaunchedEffect(profileEmail) {
+        if (!profileEmail.isNullOrBlank()) viewModel.loadProfilePhotoFromSupabase()
+    }
     
     // Logic to disable group selection
     val status = uiState.userProfile?.status?.lowercase() ?: ""
@@ -299,13 +304,10 @@ fun ProfileScreen(
                 userProfile = uiState.userProfile,
                 profilePhotoURL = profilePhotoURL,
                 isUploadingPhoto = isUploadingPhoto,
-                canUploadPhoto = ProfilePhotoService.isConfigured,
+                canUploadPhoto = true,
                 onPhotoClick = {
-                    if (ProfilePhotoService.isConfigured) {
-                        imagePickerLauncher.launch("image/*")
-                    }
-                    // Se IMGBB non configurato, non fare nulla (come iOS: il picker è sempre presente)
-                    // L'anagrafica si apre solo cliccando nome/cognome
+                    // Come iOS: il picker si apre sempre; l'upload fallirà con messaggio se IMGBB non configurato
+                    imagePickerLauncher.launch("image/*")
                 },
                 onAnagraficaClick = { navController.navigate("anagrafica") },
                 achievementsEnabled = achievementsEnabled,

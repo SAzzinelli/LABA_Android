@@ -52,7 +52,6 @@ android {
     kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
-            // KT-73255: applica annotazioni (es. @Inject) sia al parametro che al field
             freeCompilerArgs.add("-Xannotation-default-target=param-property")
         }
     }

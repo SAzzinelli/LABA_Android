@@ -94,7 +94,6 @@ class ProfileViewModel @Inject constructor(
 
     fun uploadProfilePhoto(imageData: ByteArray) {
         viewModelScope.launch {
-            if (!ProfilePhotoService.isConfigured) return@launch
             _isUploadingPhoto.value = true
             _uploadPhotoError.value = null
             try {

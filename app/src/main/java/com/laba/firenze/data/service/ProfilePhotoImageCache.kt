@@ -48,7 +48,8 @@ object ProfilePhotoImageCache {
             conn.connectTimeout = 15_000
             conn.readTimeout = 30_000
             val data = conn.getInputStream().use { it.readBytes() }
-            if (data.size >= 15_000) {
+            // Accetta immagini >= 2KB (filtra solo placeholder/favicon; foto 512px compressa possono essere 10-50KB)
+            if (data.size >= 2_000) {
                 setImageData(data, url)
                 data
             } else null
