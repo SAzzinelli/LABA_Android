@@ -6,8 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -49,7 +47,7 @@ fun NavigationCustomizationScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             // Active Section
@@ -67,27 +65,38 @@ fun NavigationCustomizationScreen(
                 val isHome = tab == AppTab.HOME
                 val isProfile = tab == AppTab.PROFILE
                 
+                // Home è sempre primo (indice 0), Profilo è sempre ultimo
+                val isFirst = index == 0
+                val isLast = index == activeTabs.lastIndex
+                
+                // Home e Profilo sono sempre locked e non possono essere spostati
+                val isLocked = isHome || isProfile || tab.isLocked
+                
                 ActiveTabRow(
                     tab = tab,
-                    isFirst = index == 0,
-                    isLast = index == activeTabs.lastIndex,
-                    isLocked = tab.isLocked, // HOME e PROFILO sono locked
+                    isFirst = isFirst,
+                    isLast = isLast,
+                    isLocked = isLocked,
                     onRemove = { 
-                        // Blocca rimozione per tab locked
-                        if (!tab.isLocked) {
+                        // Blocca rimozione per tab locked (Home e Profilo)
+                        if (!isLocked) {
                             navigationManager.toggleTabVisibility(tab)
                         }
                     },
                     onMoveUp = { 
                         // Blocca movimento per HOME (sempre primo) e tab locked
-                        if (!tab.isLocked && !isHome) {
-                            navigationManager.moveTab(index, index - 1)
+                        if (!isLocked && index > 0) {
+                            // Non permettere di spostare verso la posizione 0 (Home)
+                            val targetIndex = maxOf(1, index - 1)
+                            navigationManager.moveTab(index, targetIndex)
                         }
                     },
                     onMoveDown = { 
                         // Blocca movimento per PROFILO (sempre ultimo) e tab locked
-                        if (!tab.isLocked && !isProfile) {
-                            navigationManager.moveTab(index, index + 1)
+                        if (!isLocked && index < activeTabs.lastIndex) {
+                            // Non permettere di spostare verso l'ultima posizione (Profilo)
+                            val targetIndex = minOf(activeTabs.lastIndex - 1, index + 1)
+                            navigationManager.moveTab(index, targetIndex)
                         }
                     }
                 )
@@ -149,6 +158,7 @@ fun NavigationCustomizationScreen(
                 TextButton(
                     onClick = { 
                         navigationManager.resetToDefault()
+                        @Suppress("UNUSED_VALUE")
                         showResetDialog = false
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
@@ -157,7 +167,10 @@ fun NavigationCustomizationScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showResetDialog = false }) {
+                TextButton(onClick = { 
+                    @Suppress("UNUSED_VALUE")
+                    showResetDialog = false 
+                }) {
                     Text("Annulla")
                 }
             }
@@ -235,8 +248,7 @@ fun ActiveTabRow(
                     if (!isFirst) {
                         IconButton(
                             onClick = onMoveUp, 
-                            modifier = Modifier.size(32.dp),
-                            enabled = !isLocked
+                            modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
                                 Icons.Default.KeyboardArrowUp, 
@@ -251,8 +263,7 @@ fun ActiveTabRow(
                     if (!isLast) {
                         IconButton(
                             onClick = onMoveDown, 
-                            modifier = Modifier.size(32.dp),
-                            enabled = !isLocked
+                            modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
                                 Icons.Default.KeyboardArrowDown, 

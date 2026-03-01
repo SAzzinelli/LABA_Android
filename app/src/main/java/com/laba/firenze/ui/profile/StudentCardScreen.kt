@@ -24,7 +24,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -35,9 +34,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.laba.firenze.R
 import com.laba.firenze.ui.home.HomeViewModel
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -113,7 +109,8 @@ fun StudentCardScreen(
             StudentVerificationBadge(
                 uiState = uiState,
                 roll = roll,
-                pitch = pitch
+                pitch = pitch,
+                viewModel = viewModel
             )
             
             Spacer(modifier = Modifier.height(32.dp))
@@ -138,8 +135,30 @@ fun StudentCardScreen(
 fun StudentVerificationBadge(
     uiState: com.laba.firenze.ui.home.HomeUiState,
     roll: Float,
-    pitch: Float
+    pitch: Float,
+    viewModel: HomeViewModel = hiltViewModel()
 ) {
+    // Ottieni i dati completi dal profilo
+    val profile = viewModel.getUserProfile()
+    val studentName = if (profile?.nome != null && profile?.cognome != null) {
+        "${profile.nome} ${profile.cognome}"
+    } else {
+        profile?.displayName ?: uiState.displayName ?: "STUDENTE LABA"
+    }
+    
+    val matricola = profile?.matricola
+    val courseInfo = profile?.pianoStudi?.let { piano ->
+        // Rimuovi "A.A." e pulisci
+        piano.split("A.A.").firstOrNull()?.trim()?.replace(" - ", " ") ?: piano.trim()
+    }
+    val yearInfo = profile?.currentYear?.toIntOrNull()?.let { year ->
+        when (year) {
+            1 -> "1° ANNO"
+            2 -> "2° ANNO"
+            3 -> "3° ANNO"
+            else -> "$year° ANNO"
+        }
+    }
     // Dynamic Gradient Center based on Roll/Pitch
     // Roll (X) affects X center, Pitch (Y) affects Y center
     // Normalized [-1, 1] roughly
@@ -156,23 +175,28 @@ fun StudentVerificationBadge(
                 spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
             )
     ) {
-        val width = with(density) { maxWidth.toPx() }
-        val height = with(density) { maxHeight.toPx() }
+        // Usa maxWidth e maxHeight dallo scope di BoxWithConstraints
+        val width = with(density) { this@BoxWithConstraints.maxWidth.toPx() }
+        val height = with(density) { this@BoxWithConstraints.maxHeight.toPx() }
         
-        val centerX = width / 2 + (roll * 4) // Sensitivity factor
-        val centerY = height / 2 + (pitch * 4)
+        // Calcola il centro del gradiente in base a roll e pitch (come iOS)
+        val centerX = width / 2 + (roll / 45.0f) * (width * 0.3f) // Sposta il centro in base a roll
+        val centerY = height / 2 + (pitch / 45.0f) * (height * 0.3f) // Sposta il centro in base a pitch
+        val scale = 2.0f // Scala del gradiente (come iOS)
         
-        // Iridescent Colors (Laba Accent based)
+        // Iridescent Colors (come iOS - basati su labaAccent con variazioni)
         val baseColor = MaterialTheme.colorScheme.primary
+        // Variazioni più sottili e sobrie, mantenendo l'accent come base (come iOS)
         val gradientColors = listOf(
-            baseColor.copy(alpha = 0.9f),
-            baseColor.copy(alpha = 0.7f),
-            baseColor.copy(alpha = 0.5f),
-            baseColor.copy(alpha = 0.8f),
-            baseColor.copy(alpha = 1.0f)
+            baseColor.copy(alpha = 0.95f),
+            baseColor.copy(alpha = 0.90f),
+            baseColor.copy(alpha = 0.85f),
+            baseColor.copy(alpha = 0.92f),
+            baseColor.copy(alpha = 0.88f),
+            baseColor.copy(alpha = 0.95f)
         )
         
-        // Background Gradient (Moving)
+        // Background Gradient (Moving - come iOS)
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -180,7 +204,7 @@ fun StudentVerificationBadge(
                     Brush.radialGradient(
                         colors = gradientColors,
                         center = Offset(centerX, centerY),
-                        radius = width * 1.2f
+                        radius = maxOf(width, height) * scale
                     )
                 )
         )
@@ -202,91 +226,190 @@ fun StudentVerificationBadge(
                 )
         )
         
-        // Content
+        // Content (come iOS - padding orizzontale 16, top 12, bottom 20)
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(20.dp),
+                .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Header: Logo & Check
+            Spacer(modifier = Modifier.height(12.dp))
+            // Header: Logo LABA & Checkmark (come iOS)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
+                // Logo LABA a sinistra (65x65 come iOS)
                 Image(
-                    painter = painterResource(id = R.drawable.ic_launcher_foreground), // Use App Logo if available, fallback to launcher
-                    contentDescription = null,
-                    modifier = Modifier.size(50.dp),
-                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White)
+                    painter = painterResource(id = R.drawable.logo_laba_new),
+                    contentDescription = "LABA Logo",
+                    modifier = Modifier
+                        .size(65.dp)
+                        .shadow(
+                            elevation = 3.dp,
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            spotColor = Color.Black.copy(alpha = 0.3f)
+                        ),
+                    contentScale = ContentScale.Fit
                 )
                 
+                Spacer(modifier = Modifier.weight(1f))
+                
+                // Checkmark seal in alto a destra (come iOS)
                 Icon(
                     Icons.Default.CheckCircle,
                     contentDescription = "Verified",
                     tint = Color.White,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier
+                        .size(32.dp)
+                        .shadow(
+                            elevation = 3.dp,
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            spotColor = Color.Black.copy(alpha = 0.3f)
+                        )
                 )
             }
             
-            // Student Info
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                
-                // Name
+            // Student Info (come iOS - verticale con tutti i campi)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Nome completo (nome + cognome)
                 Column {
                     Text(
-                        "NOME",
-                        style = MaterialTheme.typography.labelSmall,
+                        text = "NOME",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
                         color = Color.White.copy(alpha = 0.8f),
                         fontWeight = FontWeight.SemiBold,
                         letterSpacing = 1.sp
                     )
                     Text(
-                        text = uiState.displayName?.uppercase() ?: "STUDENTE LABA",
-                        // style removed here to avoid duplication
+                        text = studentName.uppercase(),
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         modifier = Modifier.padding(top = 2.dp),
-                        style = LocalTextStyle.current.copy(
+                        maxLines = 2,
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontSize = 24.sp,
                             shadow = Shadow(
-                                color = Color.Black.copy(alpha = 0.25f),
-                                offset = Offset(0f, 2f),
-                                blurRadius = 4f
+                                color = Color.Black.copy(alpha = 0.3f),
+                                offset = Offset(0f, 1f),
+                                blurRadius = 2f
                             )
                         )
                     )
                 }
                 
-                // Details Row
+                // Matricola
+                Column {
+                    Text(
+                        text = "MATRICOLA",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 1.sp
+                    )
+                    Text(
+                        text = matricola?.takeIf { it.isNotBlank() } ?: "—",
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (matricola?.isNotBlank() == true) Color.White else Color.White.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(top = 2.dp),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = 14.sp,
+                            shadow = Shadow(
+                                color = Color.Black.copy(alpha = 0.3f),
+                                offset = Offset(0f, 1f),
+                                blurRadius = 2f
+                            )
+                        )
+                    )
+                }
+                
+                // Corso e Anno (stessa riga)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(20.dp)
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Matricola (Wait, UiState doesn't have matricola explicitly, might be in displayName or hidden)
-                    // Checking HomeUiState... it has displayName. Profile likely has matricola.
-                    // HomeViewModel loads Profile. I can update HomeUiState to include Matricola or access Profile directly.
-                    // For now, I'll omit Matricola if not available in HomeUiState, or update HomeUiState.
-                    // Plan says: "Name, Matricola, Course".
-                    // I should update HomeUiState to expose Matricola.
-                    
-                    // Mocking Matricola access or using Course info which is available (getCourseDisplayInfo)
-                    
-                    Column {
+                    // Corso
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            "STATUS",
-                            style = MaterialTheme.typography.labelSmall,
+                            text = "CORSO",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
                             color = Color.White.copy(alpha = 0.8f),
                             fontWeight = FontWeight.SemiBold,
                             letterSpacing = 1.sp
                         )
                         Text(
-                            "STUDENTE ATTIVO",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            text = courseInfo?.uppercase()?.takeIf { it.isNotBlank() } ?: "—",
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (courseInfo?.isNotBlank() == true) Color.White else Color.White.copy(alpha = 0.5f),
+                            modifier = Modifier.padding(top = 2.dp),
+                            maxLines = 2,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 12.sp,
+                                shadow = Shadow(
+                                    color = Color.Black.copy(alpha = 0.3f),
+                                    offset = Offset(0f, 1f),
+                                    blurRadius = 2f
+                                )
+                            )
                         )
                     }
+                    
+                    // Anno
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "ANNO",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                            color = Color.White.copy(alpha = 0.8f),
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = 1.sp
+                        )
+                        Text(
+                            text = yearInfo?.uppercase()?.takeIf { it.isNotBlank() } ?: "—",
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (yearInfo?.isNotBlank() == true) Color.White else Color.White.copy(alpha = 0.5f),
+                            modifier = Modifier.padding(top = 2.dp),
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 12.sp,
+                                shadow = Shadow(
+                                    color = Color.Black.copy(alpha = 0.3f),
+                                    offset = Offset(0f, 1f),
+                                    blurRadius = 2f
+                                )
+                            )
+                        )
+                    }
+                }
+                
+                // Status
+                Column {
+                    Text(
+                        text = "STATUS",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 1.sp
+                    )
+                    Text(
+                        text = "STUDENTE LABA",
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.padding(top = 2.dp),
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 11.sp,
+                            shadow = Shadow(
+                                color = Color.Black.copy(alpha = 0.3f),
+                                offset = Offset(0f, 1f),
+                                blurRadius = 2f
+                            )
+                        )
+                    )
                 }
             }
         }

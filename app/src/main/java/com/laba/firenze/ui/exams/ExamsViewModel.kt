@@ -54,9 +54,12 @@ class ExamsViewModel @Inject constructor(
         return profile?.currentYear?.toIntOrNull()
     }
     
+    @Suppress("UNUSED_FUNCTION")
     fun getCurrentProfile(): StudentProfile? {
         return sessionRepository.getUserProfileFlow().value
     }
+    
+    val userProfile: StateFlow<StudentProfile?> = sessionRepository.getUserProfileFlow()
     
     fun getExamById(examId: String): Esame? {
         val exams = _uiState.value.allExams
@@ -75,6 +78,7 @@ class ExamsViewModel @Inject constructor(
         return exams.find { it.oid == examId }
     }
     
+    @Suppress("UNUSED_FUNCTION")
     fun refreshExams() {
         viewModelScope.launch {
             sessionRepository.loadExams()
@@ -93,7 +97,10 @@ data class ExamsUiState(
 
 enum class ExamFilter(val displayName: String) {
     ALL("Tutti"),
+    @Suppress("UNUSED_ENUM_ENTRY")
     BOOKABLE("Prenotabili"),
+    @Suppress("UNUSED_ENUM_ENTRY")
     PASSED("Superati"),
+    @Suppress("UNUSED_ENUM_ENTRY")
     PENDING("In attesa")
 }

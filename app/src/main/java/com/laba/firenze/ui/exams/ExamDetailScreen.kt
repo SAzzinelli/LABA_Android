@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
@@ -103,11 +104,10 @@ fun ExamDetailScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                     
-                    // Voto o Status Banner
+                    // Voto o Status Banner (come iOS: displayGrade 30L, ID, —)
                     when {
                         !liveExam.voto.isNullOrEmpty() -> {
-                            // Esame superato - banner verde
-                            ExamPassedBanner(voto = liveExam.voto!!)
+                            ExamPassedBanner(displayGrade = displayGradeForBanner(liveExam.voto))
                         }
                         liveExam.dataRichiesta != null -> {
                             // Prenotato - banner rosso con glow
@@ -126,18 +126,10 @@ fun ExamDetailScreen(
                 )
             }
             
-            // Propedeuticità (se questo esame richiede un prerequisito)
+            // Propedeuticità (come iOS: usa campo propedeutico dall'API)
             val prerequisite = allExams.firstOrNull { prerequisiteExam ->
-                val examCourse = liveExam.corso.uppercase()
-                val prerequisiteCourse = prerequisiteExam.corso.uppercase()
-                
-                val examNumber = examCourse.filter { it.isDigit() }.toIntOrNull()
-                val prerequisiteNumber = prerequisiteCourse.filter { it.isDigit() }.toIntOrNull()
-                
-                examNumber != null && prerequisiteNumber != null && 
-                examNumber > 1 && prerequisiteNumber == examNumber - 1 &&
-                examCourse.replace(Regex("\\d+"), "").trim() == prerequisiteCourse.replace(Regex("\\d+"), "").trim() &&
-                prerequisiteExam.oid != liveExam.oid
+                prerequisiteExam.oid != liveExam.oid &&
+                (prerequisiteExam.propedeutico?.uppercase() ?: "").contains(liveExam.corso.uppercase())
             }
             
             prerequisite?.let { prev ->
@@ -152,34 +144,30 @@ fun ExamDetailScreen(
                 }
             }
             
-            // Propedeuticità inversa (esami sbloccati da questo esame)
+            // Propedeuticità inversa (come iOS: usa campo propedeutico "Corso propedeutico per X")
+            val propedeuticoText = liveExam.propedeutico?.trim() ?: ""
+            val nextCourseNames = if (propedeuticoText.isEmpty()) emptyList()
+                else listOf(propedeuticoText.replace("Corso propedeutico per ", "").trim()).filter { it.isNotEmpty() }
             val unlockedExams = allExams.filter { potentialExam ->
-                val examCourse = liveExam.corso.uppercase()
-                val potentialCourse = potentialExam.corso.uppercase()
-                
-                val examNumber = examCourse.filter { it.isDigit() }.toIntOrNull()
-                val potentialNumber = potentialCourse.filter { it.isDigit() }.toIntOrNull()
-                
-                examNumber != null && potentialNumber != null && 
-                potentialNumber == examNumber + 1 &&
-                examCourse.replace(Regex("\\d+"), "").trim() == potentialCourse.replace(Regex("\\d+"), "").trim() &&
-                potentialExam.oid != liveExam.oid
+                potentialExam.oid != liveExam.oid && nextCourseNames.any { name ->
+                    potentialExam.corso.uppercase().contains(name.uppercase())
+                }
             }
             
-            if (unlockedExams.isNotEmpty()) {
+            if (nextCourseNames.isNotEmpty() || unlockedExams.isNotEmpty()) {
                 item {
                     val isCurrentExamPassed = !liveExam.voto.isNullOrEmpty()
+                    val displayUnlocked = if (unlockedExams.isNotEmpty()) unlockedExams.map { it.corso }
+                        else nextCourseNames
                     
                     if (!isCurrentExamPassed) {
-                        // Mostra "Esami successivi bloccati"
                         BlockedExamsCard(
-                            unlockedExams = unlockedExams.map { it.corso },
+                            unlockedExams = displayUnlocked,
                             currentExam = liveExam.corso
                         )
                     } else {
-                        // Mostra "Esami sbloccati"
                         UnlockedExamsCard(
-                            unlockedExams = unlockedExams.map { it.corso },
+                            unlockedExams = displayUnlocked,
                             currentExam = liveExam.corso
                         )
                     }
@@ -213,9 +201,9 @@ fun ExamDetailScreen(
     }
 }
 
-// MARK: - Banner Esame Superato (verde)
+// MARK: - Banner Esame Superato (verde, come iOS: testo sx, voto in cerchio dx)
 @Composable
-private fun ExamPassedBanner(voto: String) {
+private fun ExamPassedBanner(displayGrade: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -234,23 +222,44 @@ private fun ExamPassedBanner(voto: String) {
                 imageVector = Icons.Default.CheckCircle,
                 contentDescription = null,
                 tint = Color.White,
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(28.dp)
             )
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = "Esame Superato",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(Color.White, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    text = "Esame Superato",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White
-                )
-                Text(
-                    text = "Voto: $voto",
+                    text = displayGrade,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.9f)
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF4CAF50)
                 )
             }
         }
     }
+}
+
+private fun displayGradeForBanner(voto: String?): String {
+    val v = voto?.trim() ?: return "—"
+    if (v.isEmpty()) return "—"
+    val lower = v.lowercase()
+    if (lower.contains("lode") && (lower.contains("30") || lower.startsWith("30"))) return "30L"
+    if (lower.contains("idoneo") || lower.contains("idonea") || lower.contains("idoneità")) return "ID"
+    val slashIdx = v.indexOf("/")
+    if (slashIdx >= 0) {
+        val numPart = v.substring(0, slashIdx).trim()
+        if (numPart.isNotEmpty()) return numPart
+    }
+    return v
 }
 
 // MARK: - Banner Prenotazione (rosso con glow)
@@ -397,7 +406,7 @@ private fun ExamInfoCard(
                 
                 exam.data?.let { data ->
                     ExamDetailRow(
-                        label = "Data sostenimento",
+                        label = "Sostenuto il:",
                         value = formatDate(data),
                         icon = Icons.Default.CalendarMonth,
                         iconColor = titleColor

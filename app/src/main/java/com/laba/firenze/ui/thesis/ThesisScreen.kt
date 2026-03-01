@@ -290,7 +290,7 @@ fun ThesisScreen(
             // Contatti Section
             item {
                 ContactsSection(
-                    onOpenRegulations = { openPDF("https://laba.biz/wp-content/uploads/2025/03/REGOLAMENTO-TESI-da-feb-2024.pdf") },
+                    onOpenRegulations = { openPDF("https://laba.biz/wp-content/uploads/2025/12/Regolamento-Tesi.pdf") },
                     onOpenEmail = {
                         val intent = Intent(Intent.ACTION_SENDTO).apply {
                             data = Uri.parse("mailto:info@laba.biz")

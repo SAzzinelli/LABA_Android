@@ -13,7 +13,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,7 +24,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.laba.firenze.ui.theme.LABA_Blue
 
@@ -37,6 +38,7 @@ fun CoursesScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val keyboardController = LocalSoftwareKeyboardController.current
+    @Suppress("UNUSED_VARIABLE")
     val context = LocalContext.current
     
     // Track section visit
@@ -78,28 +80,15 @@ fun CoursesScreen(
         )
         
         // Year Filter (pillole senza sfondo)
-        // Determina se è biennio o triennio
-        val profile = viewModel.getUserProfile()
-        val isBiennio = if (profile != null) {
-            val pianoStudi = profile.pianoStudi?.lowercase() ?: ""
-            val matricola = profile.matricola?.lowercase() ?: ""
-            
-            val pianoContainsBiennio = pianoStudi.contains("biennio") || 
-                                       pianoStudi.contains("ii livello") || 
-                                       pianoStudi.contains("2° livello") || 
-                                       pianoStudi.contains("secondo livello")
-            
-            val hasOnlyBiennio = matricola.contains("biennio") && !matricola.contains("triennio")
-            
-            pianoContainsBiennio || hasOnlyBiennio
-        } else {
-            false
-        }
+        // Determina se è biennio o triennio - usa la stessa logica di HomeScreen
+        // Osserva il profilo reattivamente per aggiornare i filtri quando viene caricato
+        val profile by viewModel.userProfile.collectAsStateWithLifecycle()
+        val isBiennio = isBiennioLevel(profile)
         
         val yearFilters = if (isBiennio) {
-            listOf("Tutti", "1° Anno", "2° Anno")
+            listOf("Tutti", "1° anno", "2° anno")
         } else {
-            listOf("Tutti", "1° Anno", "2° Anno", "3° Anno")
+            listOf("Tutti", "1° anno", "2° anno", "3° anno")
         }
         
         LazyRow(
@@ -122,60 +111,55 @@ fun CoursesScreen(
             }
         }
         
-        // Courses List
+        val regularCourses = uiState.courses.filter { !isOther(it.corso) }
+        val workshops = uiState.courses.filter { it.corso.uppercase().contains("ATTIVIT") && it.corso.uppercase().contains("SCELTA") }
+        val thesis = uiState.courses.filter { it.corso.uppercase().contains("TESI FINALE") }
+        
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 140.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(uiState.courses.filter { isRegularCourse(it.corso) }) { course ->
+            items(regularCourses) { course ->
                 CourseCard(
                     course = course,
-                    onClick = { 
-                        navController.navigate("course_detail/${course.oid}")
-                    }
+                    onClick = { navController.navigate("course_detail/${course.oid ?: ""}") }
                 )
             }
-            
-            // Workshop/Seminars Section - NASCOSTO
-            // item {
-            //     Text(
-            //         text = "Workshop / Seminari / Tirocinio",
-            //         style = MaterialTheme.typography.titleMedium,
-            //         fontWeight = MaterialTheme.typography.titleMedium.fontWeight,
-            //         color = LABA_Blue,
-            //         modifier = Modifier.padding(top = 16.dp)
-            //     )
-            // }
-            
-            // items(uiState.courses.filter { isWorkshopCourse(it.corso) }) { course ->
-            //     CourseCard(
-            //         course = course,
-            //         onClick = { 
-            //             // TODO: Navigate to course detail
-            //         }
-            //     )
-            // }
-            
-            // Thesis Section - NASCOSTO
-            // item {
-            //     Text(
-            //         text = "Tesi Finale",
-            //         style = MaterialTheme.typography.titleMedium,
-            //         fontWeight = MaterialTheme.typography.titleMedium.fontWeight,
-            //         color = LABA_Blue,
-            //         modifier = Modifier.padding(top = 16.dp)
-            //     )
-            // }
-            
-            // items(uiState.courses.filter { isThesisCourse(it.corso) }) { course ->
-            //     CourseCard(
-            //         course = course,
-            //         onClick = { 
-            //             // TODO: Navigate to course detail
-            //         }
-            //     )
-            // }
+            if (workshops.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Workshop / Seminari / Tirocinio",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                    )
+                }
+                items(workshops) { course ->
+                    CourseCard(
+                        course = course,
+                        onClick = { navController.navigate("course_detail/${course.oid ?: ""}") }
+                    )
+                }
+            }
+            if (thesis.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Tesi Finale",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                    )
+                }
+                items(thesis) { course ->
+                    CourseCard(
+                        course = course,
+                        onClick = { navController.navigate("course_detail/${course.oid ?: ""}") }
+                    )
+                }
+            }
         }
     }
 }
@@ -187,7 +171,7 @@ private fun sendEmailToTeacher(context: android.content.Context, course: com.lab
     val teacherEmail = getTeacherEmail(course.docente)
     if (teacherEmail != null) {
         val intent = Intent(Intent.ACTION_SENDTO).apply {
-            data = Uri.parse("mailto:$teacherEmail")
+            data = "mailto:$teacherEmail".toUri()
             putExtra(Intent.EXTRA_SUBJECT, "Richiesta informazioni - ${prettifyTitle(course.corso)}")
         }
         
@@ -228,6 +212,12 @@ private fun CourseCard(
     course: com.laba.firenze.domain.model.Esame,
     onClick: () -> Unit
 ) {
+    val yearTint = when (course.anno?.toIntOrNull()) {
+        1 -> Color(0xFFE3F2FD)
+        2 -> Color(0xFFE8F5E9)
+        3 -> Color(0xFFFFF3E0)
+        else -> Color(0xFFF3E5F5)
+    }
     Card(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
@@ -254,50 +244,39 @@ private fun CourseCard(
             }
             
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (course.cfa != null && course.cfa.isNotBlank()) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Text(
-                            text = "${course.cfa} CFA",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
+                course.anno?.toIntOrNull()?.let { anno ->
+                    com.laba.firenze.ui.common.Pill(
+                        text = when (anno) {
+                            1 -> "1° anno"
+                            2 -> "2° anno"
+                            3 -> "3° anno"
+                            else -> "$anno° anno"
+                        },
+                        kind = com.laba.firenze.ui.common.PillKind.YEAR,
+                        tintOverride = yearTint
+                    )
                 }
-                
-                if (course.anno != null && course.anno.isNotBlank()) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Text(
-                            text = "${course.anno}° anno",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
+                course.cfa?.takeIf { it.isNotBlank() }?.let { cfa ->
+                    com.laba.firenze.ui.common.Pill(
+                        text = "$cfa CFA",
+                        kind = com.laba.firenze.ui.common.PillKind.CFA
+                    )
                 }
             }
         }
     }
 }
 
-// Helper functions
-private fun isRegularCourse(title: String): Boolean {
-    val lowerTitle = title.lowercase()
-    return !lowerTitle.contains("workshop") && 
-           !lowerTitle.contains("seminario") && 
-           !lowerTitle.contains("tirocinio") && 
-           !lowerTitle.contains("tesi")
+private fun isOther(title: String): Boolean {
+    val t = title.lowercase()
+    return t.contains("attivit") || t.contains("tesi")
 }
 
+@Suppress("UNUSED_FUNCTION")
 private fun isWorkshopCourse(title: String): Boolean {
     val lowerTitle = title.lowercase()
     return lowerTitle.contains("workshop") || 
@@ -305,6 +284,7 @@ private fun isWorkshopCourse(title: String): Boolean {
            lowerTitle.contains("tirocinio")
 }
 
+@Suppress("UNUSED_FUNCTION")
 private fun isThesisCourse(title: String): Boolean {
     val lowerTitle = title.lowercase()
     return lowerTitle.contains("tesi")
@@ -318,26 +298,53 @@ private fun prettifyTitle(title: String): String {
         }
 }
 
-private fun getGradeColor(grade: String): androidx.compose.ui.graphics.Color {
+@Suppress("UNUSED_FUNCTION")
+private fun getGradeColor(grade: String): Color {
     return when {
-        grade.contains("30") || grade.contains("lode") -> androidx.compose.ui.graphics.Color(0xFF4CAF50)
-        grade.contains("27") || grade.contains("28") || grade.contains("29") -> androidx.compose.ui.graphics.Color(0xFF8BC34A)
-        grade.contains("24") || grade.contains("25") || grade.contains("26") -> androidx.compose.ui.graphics.Color(0xFFFFC107)
-        grade.contains("18") -> androidx.compose.ui.graphics.Color(0xFFFF9800)
-        else -> androidx.compose.ui.graphics.Color(0xFF9E9E9E)
+        grade.contains("30") || grade.contains("lode") -> Color(0xFF4CAF50)
+        grade.contains("27") || grade.contains("28") || grade.contains("29") -> Color(0xFF8BC34A)
+        grade.contains("24") || grade.contains("25") || grade.contains("26") -> Color(0xFFFFC107)
+        grade.contains("18") -> Color(0xFFFF9800)
+        else -> Color(0xFF9E9E9E)
     }
 }
 
-private fun getYearTint(year: String): androidx.compose.ui.graphics.Color {
+@Suppress("UNUSED_FUNCTION")
+private fun getYearTint(year: String): Color {
     return when {
-        year.contains("1") -> androidx.compose.ui.graphics.Color(0xFFE3F2FD)
-        year.contains("2") -> androidx.compose.ui.graphics.Color(0xFFE8F5E8)
-        year.contains("3") -> androidx.compose.ui.graphics.Color(0xFFFFF3E0)
-        else -> androidx.compose.ui.graphics.Color(0xFFF3E5F5)
+        year.contains("1") -> Color(0xFFE3F2FD)
+        year.contains("2") -> Color(0xFFE8F5E8)
+        year.contains("3") -> Color(0xFFFFF3E0)
+        else -> Color(0xFFF3E5F5)
     }
+}
+
+/**
+ * Determina se lo studente è del biennio basandosi sul pianoStudi e sulla matricola
+ * (stessa logica di HomeScreen.isBiennioLevel)
+ */
+private fun isBiennioLevel(profile: com.laba.firenze.domain.model.StudentProfile?): Boolean {
+    if (profile == null) return false
+    
+    val pianoStudi = profile.pianoStudi?.lowercase() ?: ""
+    val matricola = profile.matricola?.lowercase() ?: ""
+    
+    // Controlla nel pianoStudi
+    val pianoContainsBiennio = pianoStudi.contains("biennio") || 
+                               pianoStudi.contains("ii livello") || 
+                               pianoStudi.contains("2° livello") || 
+                               pianoStudi.contains("secondo livello")
+    
+    // Controlla nella matricola (se contiene "biennio" e non "triennio", è biennio)
+    val hasOnlyBiennio = matricola.contains("biennio") && !matricola.contains("triennio")
+    
+    val result = pianoContainsBiennio || hasOnlyBiennio
+    android.util.Log.d("CoursesScreen", "isBiennioLevel - pianoStudi: '$pianoStudi', matricola: '$matricola', result: $result")
+    return result
 }
 
 @Composable
-fun CoursesViewModel(): CoursesViewModel {
+@Suppress("UNUSED_FUNCTION", "FunctionName")
+private fun coursesViewModel(): CoursesViewModel {
     return hiltViewModel()
 }

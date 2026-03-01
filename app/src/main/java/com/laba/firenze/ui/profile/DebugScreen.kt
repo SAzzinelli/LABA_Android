@@ -45,7 +45,7 @@ fun DebugScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp, bottom = 120.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             item {
@@ -103,7 +103,7 @@ fun DebugScreen(
                     
                     InfoCard(
                         label = "Token FCM",
-                        value = uiState.fcmToken?.take(20) + "..." ?: "Non disponibile"
+                        value = (uiState.fcmToken?.take(20)?.let { "$it..." } ?: "Non disponibile")
                     )
                 }
             }
@@ -219,9 +219,13 @@ private fun ApiVersionCard(
             currentVersion = currentVersion,
             onVersionSelected = { version ->
                 onVersionChange(version)
+                @Suppress("UNUSED_VALUE")
                 showVersionPicker = false
             },
-            onDismiss = { showVersionPicker = false }
+            onDismiss = { 
+                @Suppress("UNUSED_VALUE")
+                showVersionPicker = false 
+            }
         )
     }
 }
@@ -258,7 +262,7 @@ private fun ApiVersionPickerDialog(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "logosuni.servicesv2/api",
+                            text = "api/api",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

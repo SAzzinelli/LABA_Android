@@ -13,9 +13,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import java.text.SimpleDateFormat
+import java.util.Locale
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import android.net.Uri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,7 +55,8 @@ fun SeminarDetailScreen(
         return
     }
     
-    val details = parseSeminarDetails(seminar.descrizioneEstesa, seminar.esito)
+    val rawDetails = parseSeminarDetails(seminar.descrizioneEstesa, seminar.esito)
+    val details = rawDetails.copy(completed = seminar.partecipato || rawDetails.completed)
     
     Scaffold(
         topBar = {
@@ -86,7 +90,7 @@ fun SeminarDetailScreen(
                         modifier = Modifier.padding(20.dp)
                     ) {
                         Text(
-                            text = prettifyTitle(seminar.titolo),
+                            text = prettifyTitle(seminarTitle(seminar.titolo)),
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -199,6 +203,25 @@ fun SeminarDetailScreen(
                 }
             }
             
+            // Allegati (documentOid) — mostra solo se OID valido (no placeholder)
+            seminar.documentOid?.takeIf { isValidDocumentOid(it) }?.let { oid ->
+                item {
+                    DetailSection(
+                        title = "Allegati",
+                        icon = Icons.Default.Description
+                    ) {
+                        val titleEnc = Uri.encode(prettifyTitle(seminarTitle(seminar.titolo)))
+                        TextButton(
+                            onClick = { navController.navigate("document_viewer/$oid/$titleEnc") }
+                        ) {
+                            Icon(Icons.Default.Description, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Visualizza allegato")
+                        }
+                    }
+                }
+            }
+            
             // Gruppi e orari
             if (details.groups.isNotEmpty()) {
                 item {
@@ -227,6 +250,24 @@ fun SeminarDetailScreen(
                 }
             }
             
+            // Fallback: se parsing non ha estratto nulla ma c'è descrizioneEstesa (es. "Prova del testo - A.A. 0-0")
+            if (details.docente == null && details.dateLines.isEmpty() && details.aula == null && details.allievi == null && details.cfa == null) {
+                val raw = seminar.descrizioneEstesa?.trim()
+                if (!raw.isNullOrEmpty()) {
+                    item {
+                        DetailSection(
+                            title = "Descrizione",
+                            icon = Icons.Default.Info
+                        ) {
+                            Text(
+                                text = plainText(raw),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+            
             // CFA acquisibili
             details.cfa?.let { cfa ->
                 item {
@@ -244,50 +285,95 @@ fun SeminarDetailScreen(
                 }
             }
             
-            // Assenze consentite
-            details.assenze?.let { assenze ->
+            // Assenze consentite (come iOS)
+            details.assenzeMax?.let { max ->
                 item {
                     DetailSection(
                         title = "Assenze consentite",
                         icon = Icons.Default.Warning,
-                        iconTint = MaterialTheme.colorScheme.error
+                        iconTint = if (max == 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                     ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Warning,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = assenze,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (max == 0) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = "Nessuna assenza consentita",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                                Text(
+                                    text = "Alla prima assenza o se si superano le assenze consentite non vengono assegnati i CFA.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            } else {
+                                Text(
+                                    text = "Numero massimo: $max assenze",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
                         }
                     }
                 }
             }
             
-            // Prenotazione
+            // Stato (come iOS)
             item {
                 DetailSection(
-                    title = "Prenotazione",
+                    title = "Stato",
                     icon = Icons.Default.Event
                 ) {
-                    if (seminar.prenotabile) {
-                        Button(
+                    when {
+                        details.completed -> Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = Color(0xFF4CAF50),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                text = "Hai frequentato il seminario!",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        seminar.dataRichiesta != null -> Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "Richiesta inviata il ${formatDateDDMMYYYY(seminar.dataRichiesta)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        seminar.richiedibile -> Button(
                             onClick = { showBookingAlert = true },
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(Icons.Default.CalendarMonth, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Prenota ora")
+                            Text("Prenota partecipazione")
                         }
-                    } else {
-                        Text(
+                        else -> Text(
                             text = "Prenotazione non disponibile",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -310,6 +396,24 @@ fun SeminarDetailScreen(
                 }
             }
         )
+    }
+}
+
+private fun formatDateDDMMYYYY(dateStr: String?): String {
+    if (dateStr.isNullOrBlank()) return "—"
+    return try {
+        val iso = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        val out = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+        val d = iso.parse(dateStr)
+        if (d != null) out.format(d) else dateStr
+    } catch (_: Exception) {
+        try {
+            val inFmt = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+            val d = inFmt.parse(dateStr)
+            if (d != null) inFmt.format(d) else dateStr
+        } catch (_: Exception) {
+            dateStr
+        }
     }
 }
 

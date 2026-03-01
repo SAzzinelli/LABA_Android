@@ -1,18 +1,17 @@
 package com.laba.firenze.ui.exams
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.laba.firenze.domain.model.Esame
 import com.laba.firenze.ui.theme.*
@@ -54,23 +54,10 @@ fun ExamsScreen(
     var queryRaw by remember { mutableStateOf("") }
     var query by remember { mutableStateOf("") }
     
-    // Determina se è biennio o triennio
-    val profile = viewModel.getCurrentProfile()
-    val isBiennio = if (profile != null) {
-        val pianoStudi = profile.pianoStudi?.lowercase() ?: ""
-        val matricola = profile.matricola?.lowercase() ?: ""
-        
-        val pianoContainsBiennio = pianoStudi.contains("biennio") || 
-                                   pianoStudi.contains("ii livello") || 
-                                   pianoStudi.contains("2° livello") || 
-                                   pianoStudi.contains("secondo livello")
-        
-        val hasOnlyBiennio = matricola.contains("biennio") && !matricola.contains("triennio")
-        
-        pianoContainsBiennio || hasOnlyBiennio
-    } else {
-        false
-    }
+    // Determina se è biennio o triennio - usa la stessa logica di HomeScreen
+    // Osserva il profilo reattivamente per aggiornare i filtri quando viene caricato
+    val profile by viewModel.userProfile.collectAsStateWithLifecycle()
+    val isBiennio = isBiennioLevel(profile)
     
     val years = if (isBiennio) listOf(1, 2) else listOf(1, 2, 3)
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -308,141 +295,81 @@ fun ExamCard(
         ),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Header con titolo e CFA
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
+            ExamGradeBadge(voto = exam.voto)
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = prettifyTitle(exam.corso),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f)
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-                
-                // CFA badge
-                exam.cfa?.let { cfa ->
-                    if (cfa.isNotEmpty()) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer
-                        ) {
-                            Text(
-                                text = "$cfa CFA",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
-                }
-            }
-            
-            // Docente
-            exam.docente?.let { docente ->
-                if (docente.isNotEmpty()) {
-                    Text(
-                        text = docente,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-            }
-            
-            // Chips container
-            @OptIn(ExperimentalLayoutApi::class)
-            FlowRow(
-                modifier = Modifier.padding(top = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                // Anno
-                Surface(
-                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
-                    shape = RoundedCornerShape(20.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Filled.School,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
+                exam.docente?.let { docente ->
+                    if (docente.isNotEmpty()) {
                         Text(
-                            text = getItalianOrdinalYear(exam.anno?.toIntOrNull() ?: 1),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            fontWeight = FontWeight.Medium
+                            text = docente,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp)
                         )
                     }
                 }
-                
-                // Stato voto con icona appropriata
-                if (!exam.voto.isNullOrEmpty()) {
-                    val gradeColor = getGradeColor(exam.voto)
-                    Surface(
-                        color = gradeColor.copy(alpha = 0.12f),
-                        shape = RoundedCornerShape(20.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Filled.Star,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = gradeColor
-                            )
-                            Text(
-                                text = exam.voto,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = gradeColor,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                } else {
-                    // Badge "Da sostenere" rosso senza bordi
-                    Surface(
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        shape = RoundedCornerShape(20.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Filled.Schedule,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                            Text(
-                                text = "Da sostenere",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                }
-                
             }
         }
     }
+}
+
+/** Badge circolare voto esame (come iOS ExamGradeBadgeView): 28, 30L, ID, — */
+@Composable
+private fun ExamGradeBadge(voto: String?, size: Int = 32) {
+    val label = displayGradeForBadge(voto)
+    val isPending = voto.isNullOrBlank() || voto.trim().isEmpty()
+    val isLode = isLodeGrade(voto)
+    val accentColor = MaterialTheme.colorScheme.primary
+    
+    Box(
+        modifier = Modifier
+            .size(size.dp)
+            .clip(CircleShape)
+            .background(
+                if (isPending) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                else accentColor
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = if (isPending) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    else Color.White
+        )
+    }
+}
+
+private fun displayGradeForBadge(voto: String?): String {
+    val v = voto?.trim() ?: return "—"
+    if (v.isEmpty()) return "—"
+    val lower = v.lowercase()
+    if (lower.contains("lode") && (lower.contains("30") || lower.startsWith("30"))) return "30L"
+    if (lower.contains("idoneo") || lower.contains("idonea") || lower.contains("idoneità")) return "ID"
+    val slashIdx = v.indexOf("/")
+    if (slashIdx >= 0) {
+        val numPart = v.substring(0, slashIdx).trim()
+        if (numPart.isNotEmpty()) return numPart
+    }
+    return v
+}
+
+private fun isLodeGrade(voto: String?): Boolean {
+    val v = voto?.trim() ?: return false
+    if (v.isEmpty()) return false
+    val lower = v.lowercase()
+    return lower.contains("lode") && (lower.contains("30") || lower.startsWith("30"))
 }
 
 // Helper functions identiche a iOS
@@ -518,13 +445,29 @@ private fun getStatusTitle(filter: StatusFilter): String {
     }
 }
 
-private fun getYearTint(year: Int): Color {
-    return when (year) {
-        1 -> Year1_Color
-        2 -> Year2_Color
-        3 -> Year3_Color
-        else -> Color(0xFF79747E) // Material 3 outline color
-    }
+
+/**
+ * Determina se lo studente è del biennio basandosi sul pianoStudi e sulla matricola
+ * (stessa logica di HomeScreen.isBiennioLevel)
+ */
+private fun isBiennioLevel(profile: com.laba.firenze.domain.model.StudentProfile?): Boolean {
+    if (profile == null) return false
+    
+    val pianoStudi = profile.pianoStudi?.lowercase() ?: ""
+    val matricola = profile.matricola?.lowercase() ?: ""
+    
+    // Controlla nel pianoStudi
+    val pianoContainsBiennio = pianoStudi.contains("biennio") || 
+                               pianoStudi.contains("ii livello") || 
+                               pianoStudi.contains("2° livello") || 
+                               pianoStudi.contains("secondo livello")
+    
+    // Controlla nella matricola (se contiene "biennio" e non "triennio", è biennio)
+    val hasOnlyBiennio = matricola.contains("biennio") && !matricola.contains("triennio")
+    
+    val result = pianoContainsBiennio || hasOnlyBiennio
+    android.util.Log.d("ExamsScreen", "isBiennioLevel - pianoStudi: '$pianoStudi', matricola: '$matricola', result: $result")
+    return result
 }
 
 private fun getGradeColor(grade: String?): Color {

@@ -36,12 +36,12 @@ fun ProgrammiScreen(
     
     LaunchedEffect(Unit) {
         try {
-            println("ProgrammiScreen: LaunchedEffect started")
+            android.util.Log.d("ProgrammiScreen", "LaunchedEffect started")
             viewModel.loadDocuments()
-            println("ProgrammiScreen: LaunchedEffect completed")
+            android.util.Log.d("ProgrammiScreen", "LaunchedEffect completed")
         } catch (e: Exception) {
             // Gestisce eventuali errori di inizializzazione
-            println("ProgrammiScreen: Error in LaunchedEffect: ${e.message}")
+            android.util.Log.e("ProgrammiScreen", "Error in LaunchedEffect: ${e.message}", e)
             e.printStackTrace()
         }
     }
@@ -279,8 +279,12 @@ private fun isProgramDoc(doc: LogosDoc): Boolean {
 
 /**
  * Formatta il titolo in proper case (prima lettera maiuscola, resto minuscolo)
+ * Gestisce i valori null restituendo un fallback
  */
-private fun prettifyTitle(title: String): String {
+private fun prettifyTitle(title: String?): String {
+    if (title.isNullOrBlank()) {
+        return "Programma didattico"
+    }
     return title.replace("_", " ")
         .split(" ")
         .joinToString(" ") { word ->

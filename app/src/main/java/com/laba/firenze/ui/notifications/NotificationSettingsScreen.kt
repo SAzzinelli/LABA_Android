@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -39,7 +39,7 @@ fun NotificationSettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp, bottom = 140.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 140.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
                 // Main toggle
@@ -56,7 +56,7 @@ fun NotificationSettingsScreen(
                         
                         // Category toggles
                         if (uiState.notificationsEnabled) {
-                            NotificationCategory.values().forEach { category ->
+                            NotificationCategory.entries.forEach { category ->
                                 NotificationToggleItem(
                                     checked = viewModel.getCategoryEnabled(category),
                                     onCheckedChange = { enabled ->

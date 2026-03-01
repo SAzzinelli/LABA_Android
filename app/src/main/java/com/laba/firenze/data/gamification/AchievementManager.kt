@@ -27,7 +27,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.*
@@ -42,7 +41,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
  */
 @Singleton
 class AchievementManager @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @ApplicationContext @Suppress("UNUSED_PARAMETER") private val context: Context,
     private val supabaseRepository: SupabaseRepository
 ) {
     private val dataStore = context.dataStore
@@ -59,10 +58,14 @@ class AchievementManager @Inject constructor(
     private val _recentlyUnlocked = MutableStateFlow<Achievement?>(null)
     val recentlyUnlocked: StateFlow<Achievement?> = _recentlyUnlocked.asStateFlow()
     
+    @Suppress("UNUSED_VARIABLE")
     private val _showConfetti = MutableStateFlow(false)
+    @Suppress("UNUSED_VARIABLE")
     val showConfetti: StateFlow<Boolean> = _showConfetti.asStateFlow()
     
+    @Suppress("UNUSED_VARIABLE")
     private val _notificationsEnabled = MutableStateFlow(true)
+    @Suppress("UNUSED_VARIABLE")
     val notificationsEnabled: StateFlow<Boolean> = _notificationsEnabled.asStateFlow()
     
     private var firstLoadDone = false
@@ -80,13 +83,19 @@ class AchievementManager @Inject constructor(
     val totalCount: Int
         get() = _achievements.value.size
     
+    @Suppress("UNUSED_VARIABLE")
     val unlockedPercentage: Double
         get() = if (totalCount > 0) unlockedCount.toDouble() / totalCount.toDouble() else 0.0
     
     init {
         scope.launch {
+            // Carica prima gli achievement, poi le stats
+            // Questo assicura che quando ricalcoliamo i punti, gli achievement siano già caricati
             loadAchievements()
             loadStats()
+            
+            // Dopo aver caricato tutto, ricalcola i punti una volta finale
+            recalculateTotalPoints()
             
             // Se c'è già un'email salvata, triggera sync
             val savedEmail = getSavedEmail()
@@ -108,9 +117,19 @@ class AchievementManager @Inject constructor(
         if (achievementsJson != null) {
             try {
                 val decoded = json.decodeFromString<List<Achievement>>(achievementsJson)
-                _achievements.value = decoded
-                val unlockedCount = decoded.count { it.isUnlocked }
-                Log.d("AchievementManager", "✅ Loaded ${decoded.size} achievements from local storage ($unlockedCount unlocked)")
+                val existingIDs = decoded.map { it.id }.toSet()
+                val newAchievements = AchievementID.entries
+                    .filter { !existingIDs.contains(it.rawValue) }
+                    .map { AchievementFactory.createAchievement(it) }
+                if (newAchievements.isNotEmpty()) {
+                    Log.d("AchievementManager", "📥 Added ${newAchievements.size} new achievements from schema")
+                    _achievements.value = decoded + newAchievements
+                    saveAchievements()
+                } else {
+                    _achievements.value = decoded
+                }
+                val unlockedCount = _achievements.value.count { it.isUnlocked }
+                Log.d("AchievementManager", "✅ Loaded ${_achievements.value.size} achievements from local storage ($unlockedCount unlocked)")
             } catch (e: Exception) {
                 Log.e("AchievementManager", "❌ Failed to decode achievements", e)
                 initializeAchievements()
@@ -118,6 +137,8 @@ class AchievementManager @Inject constructor(
         } else {
             initializeAchievements()
         }
+        
+        // Non ricalcolare qui - verrà fatto dopo loadStats() in init
     }
     
     private suspend fun initializeAchievements() {
@@ -152,6 +173,8 @@ class AchievementManager @Inject constructor(
                 val decoded = json.decodeFromString<UserStats>(statsJson)
                 _stats.value = decoded
                 Log.d("AchievementManager", "Loaded stats - Points: ${decoded.totalPoints}, Logins: ${decoded.totalLogins}")
+                
+                // Non ricalcolare qui - verrà fatto dopo in init per assicurarsi che gli achievement siano caricati
             } catch (e: Exception) {
                 Log.e("AchievementManager", "Failed to decode stats", e)
                 _stats.value = UserStats()
@@ -161,6 +184,23 @@ class AchievementManager @Inject constructor(
             _stats.value = UserStats()
             Log.d("AchievementManager", "Created new stats")
             saveStats()
+        }
+    }
+    
+    /**
+     * Ricalcola i punti totali dalla somma degli achievement sbloccati
+     * Questo assicura che i punti corrispondano sempre agli achievement sbloccati (come iOS)
+     */
+    private suspend fun recalculateTotalPoints() {
+        val unlockedAchievements = _achievements.value.filter { it.isUnlocked }
+        val calculatedPoints = unlockedAchievements.sumOf { it.points }
+        val currentPoints = _stats.value.totalPoints
+        
+        if (calculatedPoints != currentPoints) {
+            Log.d("AchievementManager", "⚠️ Points mismatch detected! Current: $currentPoints, Calculated: $calculatedPoints. Recalculating...")
+            _stats.value = _stats.value.copy(totalPoints = calculatedPoints)
+            saveStats()
+            Log.d("AchievementManager", "✅ Points recalculated: $calculatedPoints")
         }
     }
     
@@ -376,6 +416,7 @@ class AchievementManager @Inject constructor(
         }
     }
     
+    @Suppress("UNUSED_FUNCTION")
     fun trackExamBooked() {
         scope.launch {
             val newBooked = _stats.value.totalExamsBooked + 1
@@ -406,14 +447,14 @@ class AchievementManager @Inject constructor(
             var newNightLogins = _stats.value.nightLogins
             var newEarlyMorningLogins = _stats.value.earlyMorningLogins
             
-            if (hour >= 0 && hour < 7) {
+            if (hour < 7) {
                 newEarlyMorningLogins++
                 updateProgress(
                     id = AchievementID.MATTINIERO.rawValue,
                     progress = minOf(10, newEarlyMorningLogins)
                 )
             }
-            if (hour >= 0 && hour < 5) {
+            if (hour < 5) {
                 newNightLogins++
                 updateProgress(
                     id = AchievementID.GUFO_NOTTURNO.rawValue,
@@ -578,6 +619,7 @@ class AchievementManager @Inject constructor(
         }
     }
     
+    @Suppress("UNUSED_FUNCTION")
     fun setBirthday(date: Long) {
         scope.launch {
             _stats.value = _stats.value.copy(birthday = date)
@@ -594,6 +636,15 @@ class AchievementManager @Inject constructor(
         profile: StudentProfile?
     ) {
         scope.launch {
+            // Forza sblocco first_login se utente è loggato (come iOS)
+            if (profile != null) {
+                val firstLogin = _achievements.value.find { it.id == AchievementID.FIRST_LOGIN.rawValue }
+                if (firstLogin != null && !firstLogin.isUnlocked) {
+                    Log.d("AchievementManager", "🔓 User is logged in but first_login not unlocked, forcing unlock...")
+                    unlockAchievement(id = AchievementID.FIRST_LOGIN.rawValue)
+                }
+            }
+            
             // First exam booked - check if user has any exam
             if (exams.isNotEmpty()) {
                 val firstExam = exams.minByOrNull { exam ->
@@ -706,12 +757,13 @@ class AchievementManager @Inject constructor(
                 unlockAchievement(id = AchievementID.READY_TO_GRADUATE.rawValue)
             }
             
-            // Seminari
+            // Seminari frequentati: partecipato==true (v3 API) oppure esito PRESENTE/FREQUENTATO (fallback)
             val completedSeminars = seminars.filter { seminar ->
-                val esito = seminar.esito?.trim()?.uppercase() ?: ""
-                esito == "PRESENTE" || esito == "FREQUENTATO" || esito.contains("CONFERM")
+                seminar.partecipato || run {
+                    val esito = seminar.esito?.trim()?.uppercase() ?: ""
+                    esito == "PRESENTE" || esito == "FREQUENTATO" || esito.contains("CONFERM")
+                }
             }
-            
             val seminarCount = completedSeminars.size
             if (seminarCount >= 1) {
                 updateProgress(id = AchievementID.FIRST_SEMINAR.rawValue, progress = 1)
@@ -726,6 +778,22 @@ class AchievementManager @Inject constructor(
                 updateProgress(id = AchievementID.FIVE_SEMINARS.rawValue, progress = minOf(5, seminarCount))
             }
             updateProgress(id = AchievementID.NETWORKING.rawValue, progress = minOf(10, seminarCount))
+
+            // Seminari prenotati: dataRichiesta valorizzato dopo PUT (v3)
+            val bookedSeminars = seminars.filter { it.dataRichiesta != null && !it.dataRichiesta.isNullOrBlank() }
+            val bookedCount = bookedSeminars.size
+            if (bookedCount >= 1) {
+                updateProgress(id = AchievementID.FIRST_SEMINAR_BOOKED.rawValue, progress = 1)
+            }
+            if (bookedCount >= 2) {
+                updateProgress(id = AchievementID.TWO_SEMINARS_BOOKED.rawValue, progress = minOf(2, bookedCount))
+            }
+            if (bookedCount >= 3) {
+                updateProgress(id = AchievementID.THREE_SEMINARS_BOOKED.rawValue, progress = minOf(3, bookedCount))
+            }
+            if (bookedCount >= 5) {
+                updateProgress(id = AchievementID.FIVE_SEMINARS_BOOKED.rawValue, progress = minOf(5, bookedCount))
+            }
             
             // Graduated
             if (isGraduated) {
@@ -827,12 +895,17 @@ class AchievementManager @Inject constructor(
                 unlockAchievement(id = AchievementID.FORTUNATO.rawValue)
             }
             
-            // Easter Eggs - Arcobaleno (tutti i voti da 18 a 30L)
+            // Easter Eggs - Arcobaleno (tutti i voti da 18 a 30L, come iOS)
             val votiPresenti = completedExams.mapNotNull { exam ->
                 exam.voto?.trim()?.uppercase()
             }.toSet()
-            val requiredGrades = (18..30).map { it.toString() }
-            val hasAllGrades = requiredGrades.all { votiPresenti.contains(it) }
+            // Normalizza: "30 e lode" / "30L" devono contare anche come "30"
+            val votiNormalizzati = votiPresenti.flatMap { v ->
+                if (v.contains("LODE") || v.contains("30L")) listOf(v, "30")
+                else listOf(v)
+            }.toSet()
+            val requiredGrades = listOf("18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30")
+            val hasAllGrades = requiredGrades.all { votiNormalizzati.contains(it) }
             val hasAnyLode = votiPresenti.any { it.contains("LODE") || it.contains("30L") }
             if (hasAllGrades && hasAnyLode) {
                 unlockAchievement(id = AchievementID.ARCOBALENO.rawValue)
@@ -970,7 +1043,7 @@ class AchievementManager @Inject constructor(
             try {
                 val sdf = SimpleDateFormat(format, Locale.getDefault())
                 return sdf.parse(dateString)?.time
-            } catch (e: Exception) {
+            } catch (@Suppress("UNUSED_PARAMETER") e: Exception) {
                 // Continue to next format
             }
         }
@@ -978,6 +1051,7 @@ class AchievementManager @Inject constructor(
         return null
     }
     
+    @Suppress("UNUSED_FUNCTION")
     fun achievementsByCategory(category: AchievementCategory): List<Achievement> {
         return _achievements.value.filter { it.category == category }
     }
@@ -1044,12 +1118,15 @@ class AchievementManager @Inject constructor(
     
     /**
      * Update stats from cloud (used by sync service)
+     * Come iOS: usa max per evitare di perdere punti, ma poi ricalcola dalla somma degli achievement
      */
     fun updateStatsFromCloud(cloudStats: UserStats) {
         scope.launch {
             val current = _stats.value
+            // Prima usa max come iOS
+            val maxPoints = maxOf(current.totalPoints, cloudStats.totalPoints)
             _stats.value = current.copy(
-                totalPoints = maxOf(current.totalPoints, cloudStats.totalPoints),
+                totalPoints = maxPoints,
                 totalLogins = maxOf(current.totalLogins, cloudStats.totalLogins),
                 totalRefreshes = maxOf(current.totalRefreshes, cloudStats.totalRefreshes),
                 nightLogins = maxOf(current.nightLogins, cloudStats.nightLogins),
@@ -1061,6 +1138,11 @@ class AchievementManager @Inject constructor(
                 totalDataLoads = maxOf(current.totalDataLoads, cloudStats.totalDataLoads),
                 totalExamsBooked = maxOf(current.totalExamsBooked, cloudStats.totalExamsBooked)
             )
+            
+            // Dopo aver aggiornato le stats, ricalcola i punti dalla somma degli achievement sbloccati
+            // Questo assicura che i punti corrispondano sempre agli achievement sbloccati (come iOS)
+            recalculateTotalPoints()
+            
             saveStats()
         }
     }
@@ -1111,6 +1193,7 @@ class AchievementManager @Inject constructor(
     
     // MARK: - Reset (for debugging)
     
+    @Suppress("UNUSED_FUNCTION")
     fun resetAllAchievements() {
         scope.launch {
             _achievements.value = AchievementID.entries.map { id ->

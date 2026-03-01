@@ -1,15 +1,21 @@
 package com.laba.firenze.data.api
 
+import android.content.Context
+import com.google.gson.Gson
 import com.laba.firenze.domain.model.*
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import retrofit2.Response
+import java.net.URL
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class LogosUniAPIClient @Inject constructor(
-    private val apiService: LogosUniApiService
+    private val apiService: LogosUniApiService,
+    private val gson: Gson,
+    @ApplicationContext private val context: Context
 ) {
     
     // MARK: - Authentication
@@ -82,7 +88,7 @@ class LogosUniAPIClient @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 println("🔐 LogosUniAPIClient: Getting exams with token: ${token.take(20)}...")
-                println("🔐 LogosUniAPIClient: Making API call to logosuni.servicesv2/api/Enrollments")
+                println("🔐 LogosUniAPIClient: Making API call to Enrollments (base da laba.apiVersion)")
                 
                 val response = apiService.getExams("Bearer $token")
                 println("🔐 LogosUniAPIClient: Exams response code: ${response.code()}")
@@ -141,20 +147,28 @@ class LogosUniAPIClient @Inject constructor(
                 println("🔐 LogosUniAPIClient: Seminars response body: ${response.body()}")
                 
                 if (response.isSuccessful) {
-                    val seminars = response.body()?.payload?.map { seminarPayload ->
+                    val payloadList = response.body()?.payloadAsList(gson) ?: emptyList()
+                    val seminars = payloadList.map { seminarPayload ->
+                        val esito = seminarPayload.esitoRichiesta
+                        val part = seminarPayload.partecipato?.uppercase() == "Y" ||
+                            esito?.lowercase()?.let { e -> e.contains("complet") || e.contains("approv") || e.contains("valid") } == true
                         Seminario(
                             oid = seminarPayload.seminarioOid,
                             titolo = seminarPayload.descrizione,
-                            docente = null, // Not provided in API response
-                            dataInizio = null, // Not provided in API response
-                            dataFine = null, // Not provided in API response
-                            aula = null, // Not provided in API response
+                            docente = null, // Estratto da descrizioneEstesa
+                            dataInizio = null,
+                            dataFine = null,
+                            aula = null,
                             prenotabile = seminarPayload.richiedibile == "Y",
+                            richiedibile = seminarPayload.richiedibile == "Y",
+                            dataRichiesta = seminarPayload.dataRichiesta,
                             descrizioneEstesa = seminarPayload.descrizioneEstesa,
-                            esito = seminarPayload.esitoRichiesta,
-                            gruppiStudenti = emptyList() // Not provided in API response
+                            documentOid = seminarPayload.documentOid,
+                            esito = esito,
+                            gruppiStudenti = emptyList(),
+                            partecipato = part
                         )
-                    } ?: emptyList()
+                    }
                     println("🔐 LogosUniAPIClient: Mapped ${seminars.size} seminars from API response")
                     seminars
                 } else {
@@ -222,6 +236,59 @@ class LogosUniAPIClient @Inject constructor(
         }
     }
     
+    // MARK: - API v3 Notifications (Firebase)
+    
+    suspend fun getNotificationsV3(
+        token: String,
+        start: Int = 0,
+        count: Int = 100,
+        orderBy: String = "CreatedDate",
+        descending: Boolean = true
+    ): List<NotificationPayloadV3> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val request = NotificationsRequestV3(
+                    start = start,
+                    count = count,
+                    orderBy = orderBy,
+                    descending = descending
+                )
+                val response = apiService.getNotificationsV3("Bearer $token", request)
+                
+                if (response.isSuccessful) {
+                    response.body()?.payload ?: emptyList()
+                } else {
+                    emptyList()
+                }
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+    }
+    
+    suspend fun markAllNotificationsAsReadV3(token: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.markAllNotificationsAsReadV3("Bearer $token")
+                response.isSuccessful
+            } catch (e: Exception) {
+                false
+            }
+        }
+    }
+    
+    suspend fun setFcmToken(token: String, fcmToken: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val request = FcmTokenRequest(fcmToken = fcmToken)
+                val response = apiService.setFcmToken("Bearer $token", request)
+                response.isSuccessful
+            } catch (e: Exception) {
+                false
+            }
+        }
+    }
+    
     // MARK: - Documents (identico a iOS endpoints)
     
     suspend fun getDocuments(token: String): List<LogosDoc> {
@@ -258,13 +325,28 @@ class LogosUniAPIClient @Inject constructor(
                     if (responseBody != null) {
                         val bytes = responseBody.bytes()
                         responseBody.close()
-                        bytes
-                    } else {
+                        return@withContext bytes
+                    }
+                }
+                // Se v3 fallisce, prova v2 Documents (come iOS) - URL allineato a APIConfig
+                val version = context.getSharedPreferences("laba_preferences", Context.MODE_PRIVATE)
+                    .getString("laba.apiVersion", "v2") ?: "v2"
+                if (version == "v3") {
+                    try {
+                        val v2Url = "https://logosuni.laba.biz/api/api/Documents/GetDocument?id=$allegatoOid"
+                        val conn = URL(v2Url).openConnection() as java.net.HttpURLConnection
+                        conn.requestMethod = "GET"
+                        conn.setRequestProperty("Authorization", "Bearer $token")
+                        conn.setRequestProperty("Accept", "application/pdf, application/octet-stream, */*")
+                        conn.connectTimeout = 15_000
+                        conn.readTimeout = 30_000
+                        if (conn.responseCode in 200..299) {
+                            conn.inputStream.use { it.readBytes() }
+                        } else null
+                    } catch (_: Exception) {
                         null
                     }
-                } else {
-                    null
-                }
+                } else null
             } catch (e: Exception) {
                 null
             }
@@ -318,4 +400,29 @@ class LogosUniAPIClient @Inject constructor(
         }
     }
     
+    /** Cambio password (identico a iOS APIClient.changePassword). */
+    suspend fun changePassword(token: String, oldPassword: String, newPassword: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.changePassword(
+                    "Bearer $token",
+                    oldPassword = oldPassword,
+                    newPassword = newPassword
+                )
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        Result.success(Unit)
+                    } else {
+                        Result.failure(Exception(body?.errorSummary ?: "Errore sconosciuto"))
+                    }
+                } else {
+                    val msg = response.errorBody()?.string() ?: "Errore ${response.code()}"
+                    Result.failure(Exception("Errore cambio password: $msg"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
 }

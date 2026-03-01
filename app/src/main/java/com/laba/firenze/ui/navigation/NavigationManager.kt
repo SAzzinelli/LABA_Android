@@ -10,10 +10,10 @@ import javax.inject.Singleton
 class NavigationManager @Inject constructor(
     private val preferences: AppearancePreferences
 ) {
-    // Default active tabs
+    // Default active tabs (allineato a iOS: home, dispense, esami, seminari, profilo)
     private val defaultTabs = listOf(
         AppTab.HOME,
-        AppTab.COURSES,
+        AppTab.HANDOUTS,
         AppTab.EXAMS,
         AppTab.SEMINARS,
         AppTab.PROFILE
@@ -35,12 +35,13 @@ class NavigationManager @Inject constructor(
             val tabs = saved.mapNotNull { name ->
                 try {
                     AppTab.valueOf(name)
-                } catch (e: Exception) {
+                } catch (@Suppress("UNUSED_PARAMETER") e: Exception) {
                     null
                 }
             }
             if (tabs.isNotEmpty()) {
-                _activeTabs.value = tabs
+                // Assicura che Home sia sempre primo e Profilo sempre ultimo
+                _activeTabs.value = enforceHomeAndProfilePosition(tabs)
             } else {
                 _activeTabs.value = defaultTabs
             }
@@ -49,10 +50,27 @@ class NavigationManager @Inject constructor(
         }
         updateHiddenTabs()
     }
+    
+    /**
+     * Assicura che Home sia sempre in prima posizione e Profilo sempre in ultima
+     */
+    private fun enforceHomeAndProfilePosition(tabs: List<AppTab>): List<AppTab> {
+        val mutable = tabs.toMutableList()
+        
+        // Rimuovi Home e Profilo se presenti
+        mutable.remove(AppTab.HOME)
+        mutable.remove(AppTab.PROFILE)
+        
+        // Aggiungi Home all'inizio e Profilo alla fine
+        mutable.add(0, AppTab.HOME)
+        mutable.add(AppTab.PROFILE)
+        
+        return mutable
+    }
 
     private fun updateHiddenTabs() {
         val active = _activeTabs.value
-        val all = AppTab.values().toList()
+        val all = AppTab.entries
         // Hidden are all that are not in active
         val remaining = all.filter { !active.contains(it) }
         
@@ -78,7 +96,8 @@ class NavigationManager @Inject constructor(
     }
 
     fun resetToDefault() {
-        _activeTabs.value = defaultTabs
+        // Assicura che Home sia sempre primo e Profilo sempre ultimo anche nel default
+        _activeTabs.value = enforceHomeAndProfilePosition(defaultTabs)
         updateHiddenTabs()
         saveConfiguration()
     }
@@ -94,16 +113,18 @@ class NavigationManager @Inject constructor(
             // Add (Show)
             if (currentActive.size >= 5) return // Max limit
             
-            // Insert before Profile (assuming Profile is usually last)
+            // Insert before Profile (Profile is always last)
             val profileIndex = currentActive.indexOf(AppTab.PROFILE)
             if (profileIndex != -1) {
                 currentActive.add(profileIndex, tab)
             } else {
-                currentActive.add(tab)
+                // Se Profile non c'è, aggiungi prima dell'ultimo elemento (che dovrebbe essere Profile)
+                currentActive.add(currentActive.size - 1, tab)
             }
         }
         
-        _activeTabs.value = currentActive
+        // Assicura che Home sia sempre primo e Profilo sempre ultimo
+        _activeTabs.value = enforceHomeAndProfilePosition(currentActive)
         updateHiddenTabs()
         saveConfiguration()
     }
@@ -114,9 +135,18 @@ class NavigationManager @Inject constructor(
         
         val list = _activeTabs.value.toMutableList()
         if (fromIndex in list.indices && toIndex in list.indices) {
-            val item = list.removeAt(fromIndex)
+            val item = list[fromIndex]
+            
+            // Blocca movimento di Home (sempre primo) e Profilo (sempre ultimo)
+            if (item == AppTab.HOME || item == AppTab.PROFILE) return
+            // Blocca movimento verso la prima posizione (Home) o ultima posizione (Profilo)
+            if (toIndex == 0 || toIndex == list.lastIndex) return
+            
+            list.removeAt(fromIndex)
             list.add(toIndex, item)
-            _activeTabs.value = list
+            
+            // Assicura che Home sia sempre primo e Profilo sempre ultimo
+            _activeTabs.value = enforceHomeAndProfilePosition(list)
             updateHiddenTabs() // Usually not needed but safe
             saveConfiguration()
         }

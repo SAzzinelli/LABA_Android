@@ -9,7 +9,9 @@ data class SeminarDetails(
     val aula: String? = null,
     val allievi: String? = null,
     val cfa: String? = null,
-    val assenze: String? = null,
+    /** Numero massimo assenze: null = non specificato, 0 = nessuna, 1+ = massimo consentito */
+    val assenzeMax: Int? = null,
+    val assenze: String? = null, // Deprecato: usare assenzeMax
     val completed: Boolean = false,
     val groups: List<SeminarGroup> = emptyList()
 )
@@ -111,8 +113,9 @@ fun parseSeminarDetails(html: String?, esito: String?): SeminarDetails {
         matchResult?.groupValues?.drop(1)?.firstOrNull { it.isNotEmpty() }
     }
     
-    // Estrai assenze
-    val assenze = lines.firstOrNull { it.contains("assenz", ignoreCase = true) }
+    // Estrai assenze e assenzeMax
+    val assenzeLine = lines.firstOrNull { it.contains("assenz", ignoreCase = true) }
+    val assenzeMax = assenzeLine?.let { parseAssenzeMax(it) }
     
     // Check se completato
     val completed = esito?.lowercase()?.let { e ->
@@ -125,7 +128,8 @@ fun parseSeminarDetails(html: String?, esito: String?): SeminarDetails {
         aula = aula,
         allievi = allievi,
         cfa = cfa,
-        assenze = assenze?.let { extractAssenzaSentence(it) },
+        assenzeMax = assenzeMax,
+        assenze = assenzeLine?.let { extractAssenzaSentence(it) },
         completed = completed,
         groups = extractGroups(lines)
     )
@@ -208,6 +212,27 @@ private fun extractGroups(lines: List<String>): List<SeminarGroup> {
 }
 
 /**
+ * Estrae il numero massimo di assenze consentite (come iOS parseAssenzeMax).
+ * Ritorna: null = non specificato, 0 = nessuna, 1+ = massimo consentito
+ */
+fun parseAssenzeMax(line: String): Int? {
+    val lower = line.lowercase()
+    if (lower.contains("nessun") || lower.contains("non sono consentite") ||
+        Regex("""\b0\s*assenze?\b""", RegexOption.IGNORE_CASE).containsMatchIn(line)) {
+        return 0
+    }
+    if (Regex("""\b(una|un'?)\s*assenze?\b""", RegexOption.IGNORE_CASE).containsMatchIn(line)) {
+        return 1
+    }
+    val m = Regex("""(?:max\s*)?(\d{1,2})\s*assenze?""", RegexOption.IGNORE_CASE).find(line)
+    if (m != null && m.groupValues.size >= 2) {
+        return m.groupValues[1].toIntOrNull()
+    }
+    val m2 = Regex("""(\d{1,2})\s*assenze?""", RegexOption.IGNORE_CASE).find(line)
+    return m2?.groupValues?.getOrNull(1)?.toIntOrNull()
+}
+
+/**
  * Estrae solo la frase sulle assenze
  */
 private fun extractAssenzaSentence(s: String): String {
@@ -266,4 +291,14 @@ fun allieviGroups(from: String?): List<AllieviGroup> {
  */
 fun prettifyTitle(title: String): String {
     return title.replace("_", " ")
+}
+
+/**
+ * Restituisce true solo se l'OID sembra un identificatore valido (no placeholder da Logos).
+ */
+fun isValidDocumentOid(oid: String?): Boolean {
+    val t = oid?.trim() ?: return false
+    if (t.isEmpty()) return false
+    val invalid = listOf("0", "-", "null", "n/a", "none", "na", "nd", "n.d.")
+    return !invalid.contains(t.lowercase())
 }

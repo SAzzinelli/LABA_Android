@@ -4,7 +4,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -31,6 +30,7 @@ fun AppearanceSettingsScreen(
     navController: NavController,
     viewModel: AppearanceViewModel = hiltViewModel()
 ) {
+    @Suppress("UNUSED_VARIABLE")
     val selectedPattern by viewModel.selectedPattern.collectAsState()
     val scope = rememberCoroutineScope()
     
@@ -50,40 +50,9 @@ fun AppearanceSettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp, bottom = 120.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // Menu Applicazione
-            item {
-                Section(title = "Menu Applicazione") {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { navController.navigate("navigation_customization") },
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        ListItem(
-                            headlineContent = { Text("Personalizza barra di navigazione") },
-                            supportingContent = { Text("Scegli le sezioni della barra di navigazione") },
-                            leadingContent = {
-                                Icon(
-                                    Icons.Default.Menu,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            },
-                            trailingContent = { Icon(Icons.Default.ChevronRight, null) },
-                            colors = ListItemDefaults.colors(
-                                containerColor = Color.Transparent
-                            )
-                        )
-                    }
-                }
-            }
-
             // Colori dell'applicazione
             item {
                 Section(title = "Colori dell'applicazione") {
@@ -144,6 +113,58 @@ fun AppearanceSettingsScreen(
                 }
             }
             
+            // Personalizza barra di navigazione
+            item {
+                Section(title = "Personalizza navigazione") {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { navController.navigate("navigation_custom") },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        ListItem(
+                            headlineContent = { Text("Personalizza barra di navigazione") },
+                            supportingContent = { Text("Riordina le tab nella barra in basso", style = MaterialTheme.typography.bodySmall) },
+                            leadingContent = {
+                                Icon(
+                                    Icons.Default.Reorder,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            trailingContent = { Icon(Icons.Default.ChevronRight, null) },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                        )
+                    }
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { navController.navigate("home_section_order") },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        ListItem(
+                            headlineContent = { Text("Ordine sezioni Home") },
+                            supportingContent = { Text("Trascina per riordinare le sezioni nella Home", style = MaterialTheme.typography.bodySmall) },
+                            leadingContent = {
+                                Icon(
+                                    Icons.Default.ViewList,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            trailingContent = { Icon(Icons.Default.ChevronRight, null) },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                        )
+                    }
+                }
+            }
+
             // Tema
             item {
                 Section(title = "Tema") {

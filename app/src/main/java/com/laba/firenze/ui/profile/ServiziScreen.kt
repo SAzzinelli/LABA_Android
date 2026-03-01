@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import android.content.SharedPreferences
+import androidx.core.content.edit
 
 /**
  * Schermata Servizi (identica a iOS ServiziView)
@@ -63,7 +64,7 @@ fun ServiziScreen(
     // Inizializza default per bookedExams se non esiste
     LaunchedEffect(Unit) {
         if (!sharedPrefs.contains("laba.bookedExams.enabled")) {
-            sharedPrefs.edit().putBoolean("laba.bookedExams.enabled", true).apply()
+            sharedPrefs.edit { putBoolean("laba.bookedExams.enabled", true) }
             bookedExamsEnabled = true
         }
     }
@@ -71,7 +72,7 @@ fun ServiziScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Servizi") },
+                title = { Text("Funzionalità e Servizi") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
@@ -105,11 +106,11 @@ fun ServiziScreen(
                                     showTimetableDisclaimer = true
                                 } else {
                                     timetableEnabled = true
-                                    sharedPrefs.edit().putBoolean("laba.timetable.enabled", true).apply()
+                                    sharedPrefs.edit { putBoolean("laba.timetable.enabled", true) }
                                 }
                             } else {
                                 timetableEnabled = false
-                                sharedPrefs.edit().putBoolean("laba.timetable.enabled", false).apply()
+                                sharedPrefs.edit { putBoolean("laba.timetable.enabled", false) }
                             }
                         },
                         title = "Orari",
@@ -127,11 +128,11 @@ fun ServiziScreen(
                                     showAchievementsDisclaimer = true
                                 } else {
                                     achievementsEnabled = true
-                                    sharedPrefs.edit().putBoolean("laba.achievements.enabled", true).apply()
+                                    sharedPrefs.edit { putBoolean("laba.achievements.enabled", true) }
                                 }
                             } else {
                                 achievementsEnabled = false
-                                sharedPrefs.edit().putBoolean("laba.achievements.enabled", false).apply()
+                                sharedPrefs.edit { putBoolean("laba.achievements.enabled", false) }
                             }
                         },
                         title = "Traguardi",
@@ -145,11 +146,11 @@ fun ServiziScreen(
                         checked = bookedExamsEnabled,
                         onCheckedChange = { newValue ->
                             bookedExamsEnabled = newValue
-                            sharedPrefs.edit().putBoolean("laba.bookedExams.enabled", newValue).apply()
+                            sharedPrefs.edit { putBoolean("laba.bookedExams.enabled", newValue) }
                         },
-                        title = "Esami prenotati in home",
+                        title = "Esami prenotati",
                         icon = Icons.Default.CalendarMonth,
-                        iconColor = Color(0xFFFF9800), // Orange
+                        iconColor = Color(0xFFE53935), // Rosso
                         showBeta = false
                     )
                 }
@@ -191,10 +192,10 @@ fun ServiziScreen(
                     onClick = {
                         timetableEnabled = true
                         timetableDisclaimerAccepted = true
-                        sharedPrefs.edit()
-                            .putBoolean("laba.timetable.enabled", true)
-                            .putBoolean("laba.timetable.disclaimer.accepted", true)
-                            .apply()
+                        sharedPrefs.edit {
+                            putBoolean("laba.timetable.enabled", true)
+                            putBoolean("laba.timetable.disclaimer.accepted", true)
+                        }
                         showTimetableDisclaimer = false
                     }
                 ) {
@@ -227,10 +228,10 @@ fun ServiziScreen(
                     onClick = {
                         achievementsEnabled = true
                         achievementsDisclaimerAccepted = true
-                        sharedPrefs.edit()
-                            .putBoolean("laba.achievements.enabled", true)
-                            .putBoolean("laba.achievements.disclaimer.accepted", true)
-                            .apply()
+                        sharedPrefs.edit {
+                            putBoolean("laba.achievements.enabled", true)
+                            putBoolean("laba.achievements.disclaimer.accepted", true)
+                        }
                         showAchievementsDisclaimer = false
                     }
                 ) {
@@ -313,7 +314,13 @@ private fun SwitchItem(
         }
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
         )
     }
 }

@@ -48,8 +48,8 @@ fun SeminarsScreen(
             title = { Text("Seminari") }
         )
         
-        // Tab Selection - SOTTO la barra di ricerca (come in Corsi e Esami)
-        var selectedTab by remember { mutableStateOf(SeminariTab.RICHIESTE) }
+        // Filtro - SOTTO la barra di ricerca (come iOS: Tutti / Disponibili / Frequentati)
+        var selectedFilter by remember { mutableStateOf(SeminariFilter.TUTTI) }
         
         // Barra di ricerca - PRIMA dei tabs
         OutlinedTextField(
@@ -75,21 +75,21 @@ fun SeminarsScreen(
             )
         )
         
-        // Tab Selection - SOTTO la barra di ricerca
+        // Filtro - SOTTO la barra di ricerca
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            SeminariTab.values().forEach { tab ->
-                val isSelected = selectedTab == tab
+            SeminariFilter.entries.forEach { filter ->
+                val isSelected = selectedFilter == filter
                 FilterChip(
-                    onClick = { 
-                        selectedTab = tab
-                        viewModel.setSelectedTab(tab)
+                    onClick = {
+                        selectedFilter = filter
+                        viewModel.setFilter(filter)
                     },
-                    label = { Text(tab.label) },
+                    label = { Text(filter.label) },
                     selected = isSelected,
                     modifier = Modifier
                         .weight(1f)
@@ -104,57 +104,27 @@ fun SeminarsScreen(
             }
         }
         
-        // Content based on selected tab
-        when (selectedTab) {
-            SeminariTab.RICHIESTE -> {
-                // Seminars List
-                if (uiState.seminars.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        EmptyState()
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(uiState.seminars) { seminar ->
-                            SeminarCard(
-                                seminar = seminar,
-                                onClick = { 
-                                    navController.navigate("seminar-detail/${seminar.oid}")
-                                }
-                            )
-                        }
-                    }
-                }
+        // Lista seminari (filtrata)
+        if (uiState.seminars.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                EmptyFilterState(filter = uiState.filter)
             }
-            SeminariTab.FREQUENTATI -> {
-                // Frequentati content (placeholder per ora)
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CalendarToday,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "Prossimamente potrai visualizzare i seminari frequentati",
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(uiState.seminars) { seminar ->
+                    SeminarCard(
+                        seminar = seminar,
+                        onClick = {
+                            navController.navigate("seminar-detail/${seminar.oid}")
+                        }
+                    )
                 }
             }
         }
@@ -183,14 +153,26 @@ private fun SeminarCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = prettifyTitle(seminar.titolo),
+                    text = prettifyTitle(seminarTitle(seminar.titolo)),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
                 )
-                
-                if (seminar.prenotabile) {
-                    BookablePill()
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (!seminar.partecipato && seminar.richiedibile) {
+                        BookablePill()
+                    }
+                    if (seminar.partecipato) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = Color(0xFF4CAF50)
+                        )
+                    }
                 }
             }
             
@@ -243,23 +225,27 @@ private fun BookablePill() {
 }
 
 @Composable
-private fun EmptyState() {
+private fun EmptyFilterState(filter: SeminariFilter) {
     Box(
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(32.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Event,
-                contentDescription = "No seminars",
+                imageVector = if (filter == SeminariFilter.FREQUENTATI) Icons.Default.CalendarToday else Icons.Default.Search,
+                contentDescription = null,
                 modifier = Modifier.size(64.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = "Nessun seminario disponibile",
+                text = when (filter) {
+                    SeminariFilter.FREQUENTATI -> "Nessun seminario frequentato e convalidato"
+                    else -> if (filter == SeminariFilter.TUTTI) "Nessun seminario disponibile" else "Nessun seminario trovato"
+                },
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant

@@ -30,9 +30,10 @@ class GradeCalculator @Inject constructor() {
     }
     
     /**
-     * Parsing del voto per tesi (identico a iOS parseVoteForThesis)
+     * Parsing del voto per tesi (identico a iOS parseVoteForThesis).
+     * Pubblico per YearRecap e altri usi.
      */
-    private fun parseVoteForThesis(voto: String?): Int? {
+    fun parseVoteForThesis(voto: String?): Int? {
         if (voto == null) return null
         
         val cleanVoto = voto.trim().uppercase()

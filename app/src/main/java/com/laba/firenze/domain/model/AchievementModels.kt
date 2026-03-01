@@ -82,6 +82,10 @@ enum class AchievementID(val rawValue: String) {
     TWO_SEMINARS("two_seminars"),
     THREE_SEMINARS("three_seminars"),
     FIVE_SEMINARS("five_seminars"),
+    FIRST_SEMINAR_BOOKED("first_seminar_booked"),
+    TWO_SEMINARS_BOOKED("two_seminars_booked"),
+    THREE_SEMINARS_BOOKED("three_seminars_booked"),
+    FIVE_SEMINARS_BOOKED("five_seminars_booked"),
     NETWORKING("networking"),
     
     // CFA
@@ -305,6 +309,46 @@ object AchievementFactory {
                 points = 100,
                 maxProgress = 5
             )
+
+            AchievementID.FIRST_SEMINAR_BOOKED -> Achievement(
+                id = id.rawValue,
+                title = "Primo passo",
+                description = "Hai prenotato il tuo primo seminario",
+                icon = "calendar.badge.plus",
+                category = AchievementCategory.SEMINARS,
+                points = 10,
+                maxProgress = 1
+            )
+
+            AchievementID.TWO_SEMINARS_BOOKED -> Achievement(
+                id = id.rawValue,
+                title = "In agenda",
+                description = "Hai prenotato i tuoi primi 2 seminari",
+                icon = "calendar.badge.plus",
+                category = AchievementCategory.SEMINARS,
+                points = 20,
+                maxProgress = 2
+            )
+
+            AchievementID.THREE_SEMINARS_BOOKED -> Achievement(
+                id = id.rawValue,
+                title = "Organizzato",
+                description = "Hai prenotato i tuoi primi 3 seminari",
+                icon = "calendar.badge.plus",
+                category = AchievementCategory.SEMINARS,
+                points = 35,
+                maxProgress = 3
+            )
+
+            AchievementID.FIVE_SEMINARS_BOOKED -> Achievement(
+                id = id.rawValue,
+                title = "Pianificatore",
+                description = "Hai prenotato i tuoi primi 5 seminari",
+                icon = "calendar.badge.plus",
+                category = AchievementCategory.SEMINARS,
+                points = 50,
+                maxProgress = 5
+            )
             
             AchievementID.NETWORKING -> Achievement(
                 id = id.rawValue,
@@ -501,7 +545,7 @@ object AchievementFactory {
             
             AchievementID.CURIOSO -> Achievement(
                 id = id.rawValue,
-                title = "Curioso ❓",
+                title = "Curioso FAQ ❓",
                 description = "Visita le FAQ 5 volte",
                 icon = "questionmark.circle.fill",
                 category = AchievementCategory.APP_USAGE,
@@ -634,7 +678,7 @@ object AchievementFactory {
             AchievementID.MILIONARIO -> Achievement(
                 id = id.rawValue,
                 title = "Milionario ⭐",
-                description = "Raggiungi 1000 punti totali",
+                description = "Raggiungi 1000 CFApp totali",
                 icon = "star.fill",
                 category = AchievementCategory.META,
                 points = 100,

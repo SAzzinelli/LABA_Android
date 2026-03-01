@@ -1,5 +1,6 @@
 package com.laba.firenze.ui.documents
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.laba.firenze.data.repository.SessionRepository
@@ -20,27 +21,30 @@ class DocumentsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(DocumentsUiState())
     val uiState: StateFlow<DocumentsUiState> = _uiState.asStateFlow()
     
+    init {
+        Log.d("DocumentsViewModel", "ViewModel initialized")
+    }
+    
     fun loadDocuments() {
         try {
-            println("DocumentsViewModel: loadDocuments() called")
+            Log.d("DocumentsViewModel", "loadDocuments() called")
             viewModelScope.launch {
                 try {
-                    println("DocumentsViewModel: Starting to load documents")
+                    Log.d("DocumentsViewModel", "Starting to load documents")
                     _uiState.value = _uiState.value.copy(isLoading = true, error = null)
                     
-                    println("DocumentsViewModel: Calling sessionRepository.getDocuments()")
+                    Log.d("DocumentsViewModel", "Calling sessionRepository.getDocuments()")
                     val documents = sessionRepository.getDocuments()
-                    println("DocumentsViewModel: Loaded ${documents.size} documents")
+                    Log.d("DocumentsViewModel", "Loaded ${documents.size} documents")
                     
                     _uiState.value = _uiState.value.copy(
                         documents = documents,
                         isLoading = false,
                         error = null
                     )
-                    println("DocumentsViewModel: Documents loaded successfully")
+                    Log.d("DocumentsViewModel", "Documents loaded successfully")
                 } catch (e: Exception) {
-                    println("DocumentsViewModel: Error loading documents: ${e.message}")
-                    e.printStackTrace()
+                    Log.e("DocumentsViewModel", "Error loading documents: ${e.message}", e)
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         error = e.message ?: "Errore sconosciuto"
@@ -48,8 +52,7 @@ class DocumentsViewModel @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            println("DocumentsViewModel: Error in loadDocuments(): ${e.message}")
-            e.printStackTrace()
+            Log.e("DocumentsViewModel", "Error in loadDocuments(): ${e.message}", e)
         }
     }
     

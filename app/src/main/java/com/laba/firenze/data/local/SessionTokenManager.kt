@@ -26,6 +26,9 @@ class SessionTokenManager @Inject constructor(
     
     private val _userProfile = MutableStateFlow<StudentProfile?>(null)
     val userProfile: StateFlow<StudentProfile?> = _userProfile.asStateFlow()
+
+    private val _profilePhotoURL = MutableStateFlow<String?>(null)
+    val profilePhotoURL: StateFlow<String?> = _profilePhotoURL.asStateFlow()
     
     init {
         loadCredentials()
@@ -71,6 +74,45 @@ class SessionTokenManager @Inject constructor(
         _isLoggedIn.value = false
         _accessToken.value = ""
         _userProfile.value = null
+        _profilePhotoURL.value = null
+    }
+
+    private fun userKey(): String {
+        val email = sharedPreferences.getString("user_email_laba", null)
+            ?: sharedPreferences.getString("user_email_personale", null)
+            ?: "default"
+        return email
+    }
+
+    fun getProfilePhotoURL(): String? =
+        sharedPreferences.getString("profile_photo_url_${userKey()}", null)
+
+    fun getProfilePhotoDeleteURL(): String? =
+        sharedPreferences.getString("profile_photo_delete_url_${userKey()}", null)
+
+    fun setProfilePhotoURL(url: String, deleteURL: String?) {
+        val key = userKey()
+        sharedPreferences.edit().apply {
+            putString("profile_photo_url_$key", url)
+            putString("profile_photo_delete_url_$key", deleteURL ?: "")
+            apply()
+        }
+        _profilePhotoURL.value = url
+    }
+
+    /** Rimuove l'URL foto profilo (es. quando l'immagine non è più disponibile su ImgBB). */
+    fun clearProfilePhotoURL() {
+        val key = userKey()
+        sharedPreferences.edit().apply {
+            remove("profile_photo_url_$key")
+            remove("profile_photo_delete_url_$key")
+            apply()
+        }
+        _profilePhotoURL.value = null
+    }
+
+    fun loadProfilePhotoURL() {
+        _profilePhotoURL.value = getProfilePhotoURL()
     }
     
     fun getRefreshToken(): String? {
@@ -110,5 +152,6 @@ class SessionTokenManager @Inject constructor(
             
             _userProfile.value = profile
         }
+        loadProfilePhotoURL()
     }
 }

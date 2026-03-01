@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.navigation.NavController
 
 /**
@@ -45,7 +46,7 @@ fun PrivacySecurityScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp, bottom = 120.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             item {
@@ -55,7 +56,7 @@ fun PrivacySecurityScreen(
                             .fillMaxWidth()
                             .clickable {
                                 val intent = Intent(Intent.ACTION_VIEW).apply {
-                                    data = Uri.parse("https://www.laba.biz/privacy-policy")
+                                    data = "https://www.laba.biz/privacy-policy".toUri()
                                 }
                                 try {
                                     context.startActivity(intent)

@@ -1,5 +1,7 @@
 package com.laba.firenze.data.repository
 
+import com.laba.firenze.data.api.ProfilePhotoRow
+import com.laba.firenze.data.api.ProfilePhotoSaveBody
 import com.laba.firenze.data.api.SupabaseApi
 import com.laba.firenze.domain.model.SupabaseAchievement
 import com.laba.firenze.domain.model.SupabaseUserStats
@@ -88,6 +90,43 @@ class SupabaseRepository @Inject constructor(
                 authorization = AUTH_HEADER,
                 apiKey = API_KEY
             )
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    /** Foto profilo da Supabase (allineato a iOS) - restituisce Pair(imgbbUrl, deleteUrl?) */
+    suspend fun fetchProfilePhoto(email: String): Pair<String, String?>? = withContext(Dispatchers.IO) {
+        try {
+            val norm = email.trim().lowercase()
+            if (norm.isEmpty()) return@withContext null
+            val response = api.getProfilePhoto(
+                userEmail = "eq.$norm",
+                authorization = AUTH_HEADER,
+                apiKey = API_KEY
+            )
+            if (response.isSuccessful && !response.body().isNullOrEmpty()) {
+                val row = response.body()!!.first()
+                return@withContext Pair(row.imgbb_url, row.delete_url)
+            }
+            null
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    suspend fun saveProfilePhoto(email: String, imgbbUrl: String, deleteUrl: String?) = withContext(Dispatchers.IO) {
+        try {
+            val norm = email.trim().lowercase()
+            if (norm.isEmpty() || imgbbUrl.isEmpty()) return@withContext
+            val body = ProfilePhotoSaveBody(
+                user_email = norm,
+                imgbb_url = imgbbUrl,
+                delete_url = deleteUrl,
+                updated_at = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US).format(java.util.Date())
+            )
+            api.saveProfilePhoto(body, authorization = AUTH_HEADER, apiKey = API_KEY)
         } catch (e: Exception) {
             e.printStackTrace()
         }

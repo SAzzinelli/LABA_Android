@@ -55,36 +55,43 @@ class CoursesViewModel @Inject constructor(
     }
     
     private fun filterCourses(courses: List<Esame>, searchQuery: String, selectedYear: String): List<Esame> {
-        // First filter out TESI and ATTIVITÀ A SCELTA
-        var filtered = courses.filter { course ->
-            val courseTitle = course.corso.uppercase()
-            !courseTitle.contains("TESI") && !courseTitle.contains("ATTIVITÀ A SCELTA")
-        }
-        
-        // Filter by year
+        var filtered = courses
         if (selectedYear != "Tutti") {
             val yearNumber = when (selectedYear) {
-                "1° Anno" -> "1"
-                "2° Anno" -> "2" 
-                "3° Anno" -> "3"
+                "1° anno", "1° Anno" -> "1"
+                "2° anno", "2° Anno" -> "2"
+                "3° anno", "3° Anno" -> "3"
                 else -> null
             }
             if (yearNumber != null) {
                 filtered = filtered.filter { it.anno == yearNumber }
             }
         }
-        
-        // Filter by search query
-        if (searchQuery.isNotBlank()) {
-            filtered = filtered.filter { course ->
-                course.corso.contains(searchQuery, ignoreCase = true) ||
-                course.docente?.contains(searchQuery, ignoreCase = true) == true
+        val q = searchQuery.trim()
+        if (q.isNotEmpty()) {
+            val qLower = q.lowercase()
+            val numericQuery = q.filter { it.isDigit() }.toIntOrNull()
+            filtered = filtered.filter { c ->
+                prettifyTitle(c.corso).contains(q, ignoreCase = true) ||
+                (c.docente ?: "").contains(q, ignoreCase = true) ||
+                (numericQuery != null && voteNumber(c.voto) == numericQuery) ||
+                (qLower.contains("idone") && isIdoneitaVote(c.voto))
             }
         }
-        
         return filtered
     }
     
+    private fun prettifyTitle(title: String) = title.replace("_", " ")
+        .split(" ").joinToString(" ") { it.lowercase().replaceFirstChar { ch -> ch.uppercase() } }
+    private fun voteNumber(voto: String?): Int? {
+        val v = voto?.trim() ?: return null
+        if (v.isEmpty()) return null
+        return v.split("/").firstOrNull()?.trim()?.toIntOrNull()
+    }
+    private fun isIdoneitaVote(voto: String?) =
+        voto?.lowercase()?.let { it.contains("idoneo") || it.contains("idonea") || it.contains("idoneità") } == true
+    
+    @Suppress("UNUSED_FUNCTION")
     fun refreshCourses() {
         viewModelScope.launch {
             sessionRepository.loadAll()
@@ -94,6 +101,8 @@ class CoursesViewModel @Inject constructor(
     fun getUserProfile(): com.laba.firenze.domain.model.StudentProfile? {
         return sessionRepository.getUserProfileFlow().value
     }
+    
+    val userProfile: StateFlow<com.laba.firenze.domain.model.StudentProfile?> = sessionRepository.getUserProfileFlow()
 }
 
 data class CoursesUiState(

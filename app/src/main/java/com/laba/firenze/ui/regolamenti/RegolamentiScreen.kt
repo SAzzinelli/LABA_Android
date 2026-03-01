@@ -59,60 +59,61 @@ fun RegolamentiScreen(
         }
     }
 
+    // Sorgente: link pubblici dal sito LABA (allineati a iOS, dic 2025)
     val allDocuments = remember {
         listOf(
             RegolamentoDocument(
                 title = "Statuto dell'istituzione",
-                url = "https://laba.biz/wp-content/uploads/2019/03/4.-Statuto-dellIstituzione.pdf",
+                url = "https://laba.biz/wp-content/uploads/2025/12/Statuto-dellIstituzione.pdf",
                 category = RegolamentoCategory.ISTITUZIONE,
                 icon = Icons.Default.Description,
                 note = "Finalità e principi dell'accademia"
             ),
             RegolamentoDocument(
                 title = "Norme generali",
-                url = "https://laba.biz/wp-content/uploads/2025/03/REGOLAMENTO-GENERALE-24-25.pdf",
+                url = "https://laba.biz/wp-content/uploads/2025/12/Regolamento-Generale.pdf",
                 category = RegolamentoCategory.DIDATTICA,
                 icon = Icons.AutoMirrored.Filled.List,
                 note = "Approfondimenti e integrazioni al Regolamento Didattico"
             ),
             RegolamentoDocument(
                 title = "Regolamento didattico",
-                url = "https://laba.biz/wp-content/uploads/2025/03/REGOLAMENTO-DIDATTICO-APPROVATO.pdf",
+                url = "https://laba.biz/wp-content/uploads/2025/12/Regolamento-Didattico.pdf",
                 category = RegolamentoCategory.DIDATTICA,
                 icon = Icons.Default.Book,
                 note = "Approvato dal MUR"
             ),
             RegolamentoDocument(
                 title = "Regolamento tesi",
-                url = "https://laba.biz/wp-content/uploads/2025/03/REGOLAMENTO-TESI-da-feb-2024.pdf",
+                url = "https://laba.biz/wp-content/uploads/2025/12/Regolamento-Tesi.pdf",
                 category = RegolamentoCategory.DIDATTICA,
                 icon = Icons.Default.School,
                 note = "Scadenze, consegne e voto finale"
             ),
             RegolamentoDocument(
                 title = "Supporto per allievi",
-                url = "https://laba.biz/wp-content/uploads/2025/03/SUPPORTO-ALLA-DIDATTICA-PER-ALLIEVI-CON-DSA-BES-ADHD-A.A.-2024-2025.pdf",
+                url = "https://laba.biz/wp-content/uploads/2025/12/Supporto-alla-Didattica.pdf",
                 category = RegolamentoCategory.INCLUSIONE,
                 icon = Icons.Default.Person,
                 note = "Tutor dedicati e modalità d'esame DSA/BES/ADHD"
             ),
             RegolamentoDocument(
                 title = "Consulta degli Studenti",
-                url = "https://laba.biz/wp-content/uploads/2024/06/regolamento-consulta-degli-studenti.pdf",
+                url = "https://laba.biz/wp-content/uploads/2025/12/Consulta-degli-studenti-1.pdf",
                 category = RegolamentoCategory.STUDENTI,
                 icon = Icons.Default.Group,
                 note = "Elezioni, funzioni e durata"
             ),
             RegolamentoDocument(
                 title = "Qualità LABA",
-                url = "https://laba.biz/wp-content/uploads/2024/06/regolamento-qualita.pdf",
+                url = "https://laba.biz/wp-content/uploads/2025/12/Qualita-LABA.pdf",
                 category = RegolamentoCategory.QUALITA,
                 icon = Icons.Default.Verified,
                 note = "Comitato qualità e processi AQ"
             ),
             RegolamentoDocument(
                 title = "Parità di genere",
-                url = "https://laba.biz/wp-content/uploads/2025/01/parita-di-Genere-Allegato-E-Piano-Strategico.pdf",
+                url = "https://laba.biz/wp-content/uploads/2025/12/Parita-di-Genere.pdf",
                 category = RegolamentoCategory.QUALITA,
                 icon = Icons.Default.Equalizer,
                 note = "Obiettivi e misure adottate"

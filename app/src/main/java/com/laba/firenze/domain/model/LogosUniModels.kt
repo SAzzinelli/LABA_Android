@@ -1,6 +1,9 @@
 package com.laba.firenze.domain.model
 
 import android.os.Parcelable
+import com.google.gson.JsonArray
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
 import kotlinx.parcelize.Parcelize
 
 // MARK: - Authentication Models
@@ -157,9 +160,14 @@ data class Seminario(
     val dataFine: String? = null,
     val aula: String? = null,
     val prenotabile: Boolean = false,
+    val richiedibile: Boolean = false,
+    val dataRichiesta: String? = null,
     val descrizioneEstesa: String? = null,
+    val documentOid: String? = null,
     val esito: String? = null,
-    val gruppiStudenti: List<String> = emptyList()
+    val gruppiStudenti: List<String> = emptyList(),
+    /** true quando partecipato/convalidato dalla segreteria */
+    val partecipato: Boolean = false
 ) : Parcelable
 
 @Parcelize
@@ -170,7 +178,9 @@ data class SeminarioPayload(
     val documentOid: String? = null,
     val dataRichiesta: String? = null,
     val esitoRichiesta: String? = null,
-    val richiedibile: String? = null
+    val richiedibile: String? = null,
+    /** v3: Y quando la segreteria spunta "partecipato" in LOGOS.UNI; N default */
+    val partecipato: String? = null
 ) : Parcelable
 
 @Parcelize
@@ -183,6 +193,26 @@ data class SeminariResponse(
     val payload: List<SeminarioPayload> = emptyList(),
     val errorSummary: String? = null
 ) : Parcelable
+
+/** Risposta v3: payload può essere singolo oggetto o array. Usare payloadAsList() per ottenere la lista. */
+data class SeminariResponseV3(
+    val success: Boolean = false,
+    val payload: JsonElement? = null,
+    val start: Int? = null,
+    val count: Int? = null,
+    val totalCount: Int? = null,
+    val errors: List<ApiError>? = null,
+    val errorSummary: String? = null
+) {
+    fun payloadAsList(gson: com.google.gson.Gson): List<SeminarioPayload> {
+        val el = payload ?: return emptyList()
+        return when (el) {
+            is JsonArray -> el.mapNotNull { gson.fromJson(it, SeminarioPayload::class.java) }
+            is JsonObject -> listOfNotNull(gson.fromJson(el, SeminarioPayload::class.java))
+            else -> emptyList()
+        }
+    }
+}
 
 // MARK: - Notification Models
 
@@ -217,6 +247,52 @@ data class NotificationsResponse(
     val errorSummary: String? = null,
     val errorMessage: String? = null
 ) : Parcelable
+
+// MARK: - API v3 Notification Models (Firebase)
+
+data class NotificationsRequestV3(
+    val start: Int = 0,
+    val count: Int = 100,
+    val orderBy: String = "CreatedDate",
+    val descending: Boolean = true
+)
+
+@Parcelize
+data class NotificationPayloadV3(
+    val id: Int,
+    val dataOraCreazione: String,
+    val tipo: String,
+    val oggetto: String,
+    val messaggio: String,
+    val parametro: String? = null,
+    val allievoOId: String? = null,
+    val dataOraLetturaNotifica: String? = null,
+    val fcmToken: String? = null,
+    // Campi per allegati (quando presenti)
+    val attachmentType: String? = null, // "0" per Programma, "1" per Dispensa
+    val oid: String? = null // OID dell'allegato
+) : Parcelable
+
+@Parcelize
+data class NotificationsResponseV3(
+    val success: Boolean,
+    val errors: List<ApiError>? = null,
+    val start: Int = 0,
+    val count: Int = 0,
+    val totalCount: Int = 0,
+    val payload: List<NotificationPayloadV3> = emptyList(),
+    val errorSummary: String? = null
+) : Parcelable
+
+@Parcelize
+data class ApiError(
+    val code: String? = null,
+    val message: String? = null
+) : Parcelable
+
+data class FcmTokenRequest(
+    val fcmToken: String
+)
 
 // MARK: - Documents Models
 

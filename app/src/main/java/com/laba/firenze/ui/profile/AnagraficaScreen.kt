@@ -145,7 +145,10 @@ fun AnagraficaScreen(
     
     if (showChangePassword) {
         ChangePasswordDialog(
-            onDismiss = { showChangePassword = false },
+            onDismiss = {
+                viewModel.clearChangePasswordState()
+                showChangePassword = false
+            },
             onSuccess = { showChangePassword = false },
             viewModel = viewModel
         )
@@ -247,29 +250,34 @@ fun ChangePasswordDialog(
     var oldPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
+    
+    val uiState by viewModel.uiState.collectAsState()
+    val changePasswordState = uiState.changePasswordState
+    val isLoading = changePasswordState == com.laba.firenze.ui.profile.ChangePasswordState.Loading
+    
+    LaunchedEffect(changePasswordState) {
+        when (changePasswordState) {
+            is com.laba.firenze.ui.profile.ChangePasswordState.Success -> {
+                successMessage = "Password cambiata con successo!"
+                viewModel.clearChangePasswordState()
+                delay(1500)
+                onSuccess()
+            }
+            is com.laba.firenze.ui.profile.ChangePasswordState.Error -> {
+                errorMessage = (changePasswordState as com.laba.firenze.ui.profile.ChangePasswordState.Error).message
+                viewModel.clearChangePasswordState()
+            }
+            else -> {}
+        }
+    }
     
     val isValid = oldPassword.isNotEmpty() && 
                   newPassword.isNotEmpty() && 
                   confirmPassword.isNotEmpty() &&
                   newPassword == confirmPassword &&
                   newPassword.length >= 8
-    
-    var triggerPasswordChange by remember { mutableStateOf(0) }
-    
-    // Simula cambio password quando triggerPasswordChange cambia
-    LaunchedEffect(triggerPasswordChange) {
-        if (triggerPasswordChange > 0 && isLoading) {
-            delay(1000)
-            isLoading = false
-            // Simulazione: sostituire con chiamata API reale
-            successMessage = "Password cambiata con successo!"
-            delay(2000)
-            onSuccess()
-        }
-    }
     
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -340,12 +348,9 @@ fun ChangePasswordDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    isLoading = true
                     errorMessage = null
                     successMessage = null
-                    triggerPasswordChange++
-                    // TODO: Chiamare viewModel.changePassword(oldPassword, newPassword)
-                    // La logica di simulazione è gestita da LaunchedEffect sopra
+                    viewModel.changePassword(oldPassword, newPassword)
                 },
                 enabled = isValid && !isLoading,
                 modifier = Modifier.fillMaxWidth()

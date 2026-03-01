@@ -1,7 +1,6 @@
 package com.laba.firenze.di
 
 import android.content.Context
-import com.laba.firenze.data.NotificationManager
 import com.laba.firenze.data.TopicManager
 import com.laba.firenze.data.repository.LessonCalendarRepository
 import dagger.Module
@@ -14,7 +13,7 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object DataModule {
-    
+
     @Provides
     @Singleton
     fun provideTopicManager(
@@ -22,7 +21,7 @@ object DataModule {
     ): TopicManager {
         return TopicManager(context)
     }
-    
+
     @Provides
     @Singleton
     fun provideLessonCalendarRepository(
@@ -31,13 +30,7 @@ object DataModule {
         return LessonCalendarRepository(context)
     }
 
-    @Provides
-    @Singleton
-    fun provideAchievementManager(
-        @ApplicationContext context: Context,
-        supabaseRepository: com.laba.firenze.data.repository.SupabaseRepository
-    ): com.laba.firenze.data.gamification.AchievementManager {
-        return com.laba.firenze.data.gamification.AchievementManager(context, supabaseRepository)
-    }
+    // SuperSaasRepository, GestionaleRepository: @Singleton + @Inject, Hilt provides automatically
+    // AchievementManager è già annotato con @Singleton e @Inject, quindi non serve @Provides
 }
 

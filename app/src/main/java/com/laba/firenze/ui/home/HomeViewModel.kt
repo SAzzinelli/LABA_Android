@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import androidx.core.content.edit
 import javax.inject.Inject
 import kotlin.math.max
 import kotlin.math.min
@@ -27,6 +29,7 @@ import java.time.ZoneId
 import java.util.Date
 import java.text.SimpleDateFormat
 import java.util.Locale
+import com.laba.firenze.LabaConfig
 
 data class HeroInfo(
     val displayName: String,
@@ -51,7 +54,7 @@ class HomeViewModel @Inject constructor(
         val allEvents = lessonCalendarRepository.events.value
         val calendar = java.util.Calendar.getInstance()
         val now = Date()
-        val selectedGroup = appearancePreferences.getSelectedGroup()
+        val selectedGroup = if (LabaConfig.USE_GROUP_FILTER) appearancePreferences.getSelectedGroup() else null
         
         // Filtra lezioni di oggi e domani
         val todayStart = calendar.time
@@ -109,6 +112,29 @@ class HomeViewModel @Inject constructor(
     
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    
+    private val prefs = context.getSharedPreferences("LABA_PREFS", Context.MODE_PRIVATE)
+    private val defaultSectionOrder = listOf("hero", "kpi", "progress", "lessons", "exams", "quickActions")
+    
+    private val _sectionOrder = MutableStateFlow(loadSectionOrder())
+    val sectionOrder: StateFlow<List<String>> = _sectionOrder.asStateFlow()
+    
+    private fun loadSectionOrder(): List<String> {
+        val json = prefs.getString("home.sectionOrder", null) ?: return defaultSectionOrder
+        return try {
+            val arr = JSONArray(json)
+            (0 until arr.length()).map { arr.getString(it) }
+        } catch (_: Exception) {
+            defaultSectionOrder
+        }
+    }
+    
+    fun saveSectionOrder(order: List<String>) {
+        prefs.edit { putString("home.sectionOrder", JSONArray(order).toString()) }
+        _sectionOrder.value = order
+    }
+    
+    fun getSectionOrderList(): List<String> = _sectionOrder.value
     
     // Flag per tracciare se i dati sono già stati caricati
     private var hasLoadedData = false
@@ -788,6 +814,30 @@ class HomeViewModel @Inject constructor(
     private fun isIdoneitaVote(voto: String?): Boolean {
         val v = voto?.lowercase() ?: return false
         return v.contains("idoneo") || v.contains("idonea") || v.contains("idoneità")
+    }
+    
+    /**
+     * Finestre di sessione d'esame: la sezione esami in Home è visibile solo in questi periodi.
+     * Allineato a iOS examSessionWindows().
+     */
+    private fun examSessionWindows(): List<Pair<LocalDate, LocalDate>> {
+        return listOf(
+            Pair(LocalDate.of(2026, 2, 16), LocalDate.of(2026, 2, 20)),
+            Pair(LocalDate.of(2026, 6, 22), LocalDate.of(2026, 6, 30)),
+            Pair(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 10))
+            // Aggiungere altre sessioni qui
+        )
+    }
+    
+    /**
+     * True se oggi (in Europa/Roma) ricade in una delle finestre di sessione d'esame.
+     */
+    fun isTodayInExamSession(): Boolean {
+        val today = LocalDate.now(ZoneId.of("Europe/Rome"))
+        for ((start, end) in examSessionWindows()) {
+            if (!today.isBefore(start) && !today.isAfter(end)) return true
+        }
+        return false
     }
     
     /**

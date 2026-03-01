@@ -31,6 +31,13 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Deep link laba://lesson/{lessonId} (identico a iOS handleDeepLink) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="laba" android:host="lesson" android:pathPrefix="/" />
+            </intent-filter>
         </activity>
 
         <!-- Firebase Messaging Service -->
@@ -41,7 +48,6 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
-
         <!-- FileProvider per condividere file PDF -->
         <provider
             android:name="androidx.core.content.FileProvider"

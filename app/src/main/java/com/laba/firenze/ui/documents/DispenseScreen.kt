@@ -238,7 +238,7 @@ fun DispenseScreen(
                                             // Track achievement
                                             viewModel.trackDispenseOpen(doc.oid)
                                             val title = if (!doc.descrizione.isNullOrBlank()) {
-                                                doc.descrizione!!
+                                                doc.descrizione
                                             } else {
                                                 doc.tipo ?: "Dispensa"
                                             }
@@ -278,7 +278,7 @@ private fun DispensaListItem(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             val title = if (!document.descrizione.isNullOrBlank()) {
-                document.descrizione!!
+                document.descrizione
             } else {
                 document.tipo ?: "Dispensa"
             }
@@ -316,8 +316,12 @@ private fun isDispensaDoc(doc: LogosDoc): Boolean {
 
 /**
  * Formatta il titolo in proper case (prima lettera maiuscola, resto minuscolo)
+ * Gestisce i valori null restituendo un fallback
  */
-private fun prettifyTitle(title: String): String {
+private fun prettifyTitle(title: String?): String {
+    if (title.isNullOrBlank()) {
+        return "Dispensa"
+    }
     return title.replace("_", " ")
         .split(" ")
         .joinToString(" ") { word ->

@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.laba.firenze.ui.notifications.viewmodel.InboxNotificationsViewModel
+import com.laba.firenze.ui.notifications.viewmodel.InboxNotificationsViewModel.NotificationDisplayItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,7 +97,7 @@ fun InboxNotificationsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(
@@ -120,7 +121,10 @@ fun InboxNotificationsScreen(
                     notification = notification,
                     onDismiss = { selectedNotification = null },
                     onReadChanged = { read -> viewModel.setRead(id, read) },
-                    onDelete = { viewModel.dismiss(id); selectedNotification = null }
+                    onDelete = { 
+                        viewModel.dismiss(id)
+                        selectedNotification = null 
+                    }
                 )
             }
         }
@@ -129,9 +133,9 @@ fun InboxNotificationsScreen(
 
 @Composable
 fun NotificationCard(
-    notification: com.laba.firenze.ui.notifications.viewmodel.InboxNotificationsViewModel.NotificationDisplayItem,
+    notification: NotificationDisplayItem,
     onClick: () -> Unit,
-    onDismiss: () -> Unit
+    @Suppress("UNUSED_PARAMETER") onDismiss: () -> Unit
 ) {
     Card(
         modifier = Modifier

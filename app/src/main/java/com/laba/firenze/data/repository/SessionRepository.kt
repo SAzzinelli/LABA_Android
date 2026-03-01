@@ -1,17 +1,24 @@
 package com.laba.firenze.data.repository
 
+import android.content.Context
 import android.util.Log
 import com.laba.firenze.data.api.AuthApi
 import com.laba.firenze.data.api.LogosUniAPIClient
+import com.laba.firenze.data.NotificationManager
 import com.laba.firenze.data.local.BackoffManager
 import com.laba.firenze.data.local.JwtDecoder
 import com.laba.firenze.data.local.KeychainHelper
 import com.laba.firenze.data.local.SessionTokenManager
 import com.laba.firenze.data.local.TokenStore
 import com.laba.firenze.data.TopicManager
+import com.laba.firenze.data.service.ProfilePhotoPreloadService
 import com.laba.firenze.domain.model.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,7 +35,12 @@ class SessionRepository @Inject constructor(
     private val tokenStore: TokenStore,
     private val jwtDecoder: JwtDecoder,
     private val backoffManager: BackoffManager,
-    private val topicManager: TopicManager
+    private val topicManager: TopicManager,
+    private val notificationManager: NotificationManager,
+    private val superSaasRepository: SuperSaasRepository,
+    private val gestionaleRepository: GestionaleRepository,
+    private val supabaseRepository: SupabaseRepository,
+    @ApplicationContext private val context: Context
 ) {
     
     // State flows per i dati
@@ -51,6 +63,10 @@ class SessionRepository @Inject constructor(
     // Guardia concorrente per evitare più restore in parallelo (identico a iOS _restoreInFlight)
     @Volatile
     private var restoreInFlight = false
+    
+    /** True durante il refresh/restore del token (per mostrare "Aggiornamento accesso" come su iOS). */
+    private val _isRefreshingSession = MutableStateFlow(false)
+    val isRefreshingSession: StateFlow<Boolean> = _isRefreshingSession.asStateFlow()
     
     // MARK: - Authentication
     
@@ -93,6 +109,11 @@ class SessionRepository @Inject constructor(
                     
                     // Carica i dati dell'utente
                     loadUserProfile()
+                    
+                    // Invia FCM token al server (solo per v3)
+                    if (isApiV3()) {
+                        sendFcmTokenToServer(tokenResponse.access_token)
+                    }
                     
                     // Carica tutti i dati
                     loadAll()
@@ -169,9 +190,13 @@ class SessionRepository @Inject constructor(
             val (username, password) = credentials
             val normalizedUsername = keychainHelper.normalizeUsername(username)
             
-            // 5. Chiamata "silente" di login (ROPC)
-            return passwordLogin(normalizedUsername, password)
-            
+            // 5. Mostra "Aggiornamento accesso" durante il refresh (identico a iOS RefreshTokenScreen)
+            _isRefreshingSession.value = true
+            try {
+                return passwordLogin(normalizedUsername, password)
+            } finally {
+                _isRefreshingSession.value = false
+            }
         } finally {
             restoreInFlight = false
         }
@@ -241,12 +266,14 @@ class SessionRepository @Inject constructor(
         keychainHelper.clearCredentials()
         tokenStore.clearTokens() // Nuovo sistema OAuth2
         backoffManager.clearBackoff() // Pulisce anche il backoff
-        
+        superSaasRepository.logout()
+        gestionaleRepository.logout()
+
         // Pulisce i dati
         _exams.value = emptyList()
         _seminars.value = emptyList()
         _notifications.value = emptyList()
-        
+
         Log.d("SessionRepository", "Logout completed")
     }
     
@@ -309,6 +336,8 @@ class SessionRepository @Inject constructor(
                 
                 tokenManager.saveUserProfile(profile)
                 Log.d("SessionRepository", "User profile saved successfully: ${profile.displayName}")
+                fetchAndLoadProfilePhotoFromSupabase(profile.emailLABA ?: profile.emailPersonale)
+                ProfilePhotoPreloadService.preloadAllIfNeeded(tokenManager.getProfilePhotoURL())
                 
                 // Update FCM topics based on user data
                 updateFCMTopics(profile)
@@ -438,19 +467,42 @@ class SessionRepository @Inject constructor(
             
             Log.d("SessionRepository", "Loading notifications with token: ${token.take(20)}...")
             
-            val notificationPayloads = apiClient.getNotifications(token)
-            val notifications = notificationPayloads.map { payload ->
-                NotificationItem(
-                    id = payload.id,
-                    titolo = payload.oggetto,
-                    messaggio = payload.messaggio,
-                    data = payload.dataOraCreazione,
-                    tipo = "notification",
-                    isRead = payload.dataOraLetturaNotifica != null
+            val notifications = if (isApiV3()) {
+                // API v3 con paginazione e nuovi campi
+                val notificationPayloadsV3 = apiClient.getNotificationsV3(
+                    token = token,
+                    start = 0,
+                    count = 100,
+                    orderBy = "CreatedDate",
+                    descending = true
                 )
+                notificationPayloadsV3.map { payload ->
+                    NotificationItem(
+                        id = payload.id,
+                        titolo = payload.oggetto,
+                        messaggio = payload.messaggio,
+                        data = payload.dataOraCreazione,
+                        tipo = payload.tipo,
+                        isRead = payload.dataOraLetturaNotifica != null
+                    )
+                }
+            } else {
+                // API v2 (retrocompatibilità)
+                val notificationPayloads = apiClient.getNotifications(token)
+                notificationPayloads.map { payload ->
+                    NotificationItem(
+                        id = payload.id,
+                        titolo = payload.oggetto,
+                        messaggio = payload.messaggio,
+                        data = payload.dataOraCreazione,
+                        tipo = "notification",
+                        isRead = payload.dataOraLetturaNotifica != null
+                    )
+                }
             }
+            
             _notifications.value = notifications
-            Log.d("SessionRepository", "Loaded ${notifications.size} notifications")
+            Log.d("SessionRepository", "Loaded ${notifications.size} notifications (API ${if (isApiV3()) "v3" else "v2"})")
         } catch (e: Exception) {
             Log.d("SessionRepository", "Error loading notifications: ${e.message}")
         }
@@ -460,6 +512,50 @@ class SessionRepository @Inject constructor(
     
     fun getUserProfile(): StudentProfile? {
         return tokenManager.userProfile.value
+    }
+
+    fun getProfilePhotoURL(): String? = tokenManager.getProfilePhotoURL()
+    fun getProfilePhotoDeleteURL(): String? = tokenManager.getProfilePhotoDeleteURL()
+    fun setProfilePhotoURL(url: String, deleteURL: String?) {
+        tokenManager.setProfilePhotoURL(url, deleteURL)
+        // Salva su Supabase per sincronizzare su altri dispositivi (come iOS)
+        val profile = tokenManager.userProfile.value
+        val email = profile?.emailLABA ?: profile?.emailPersonale
+        if (!email.isNullOrBlank()) {
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                supabaseRepository.saveProfilePhoto(email, url, deleteURL)
+            }
+        }
+    }
+    /** Carica foto da Supabase (sorgente unica, come iOS) poi fallback locale. Chiamare dopo login/refresh. */
+    suspend fun fetchAndLoadProfilePhotoFromSupabase(email: String?) {
+        val norm = email?.trim()?.lowercase() ?: return
+        if (norm.isEmpty()) return
+        tokenManager.clearProfilePhotoURL() // Pulisci per evitare foto utente precedente
+        try {
+            val result = supabaseRepository.fetchProfilePhoto(norm)
+            if (result != null) {
+                tokenManager.setProfilePhotoURL(result.first, result.second)
+                Log.d("SessionRepository", "Profile photo loaded from Supabase for $norm")
+            } else {
+                tokenManager.loadProfilePhotoURL() // Fallback locale
+            }
+        } catch (e: Exception) {
+            Log.d("SessionRepository", "Supabase fetch profile photo failed: ${e.message}")
+            tokenManager.loadProfilePhotoURL()
+        }
+    }
+
+    fun loadProfilePhotoURL() {
+        tokenManager.loadProfilePhotoURL()
+    }
+
+    /** Carica foto da Supabase (per utente che l'ha impostata su iOS). Chiamare all'apertura Profilo. */
+    suspend fun loadProfilePhotoFromSupabase() {
+        val email = tokenManager.userProfile.value?.emailLABA
+            ?: tokenManager.userProfile.value?.emailPersonale
+            ?: keychainHelper.getUsername()
+        fetchAndLoadProfilePhotoFromSupabase(email)
     }
     
     /**
@@ -533,7 +629,12 @@ class SessionRepository @Inject constructor(
         val token = tokenManager.accessToken.value
         if (token.isEmpty()) return false
         
-        return apiClient.markAllNotificationsAsRead(token)
+        // API v3 usa GET, v2 usa POST
+        return if (isApiV3()) {
+            apiClient.markAllNotificationsAsReadV3(token)
+        } else {
+            apiClient.markAllNotificationsAsRead(token)
+        }
     }
     
     // Alias methods for ViewModel compatibility
@@ -561,6 +662,13 @@ class SessionRepository @Inject constructor(
     
     fun getAccessToken(): String {
         return tokenManager.accessToken.value
+    }
+    
+    /** Cambio password (identico a iOS APIClient.changePassword). */
+    suspend fun changePassword(oldPassword: String, newPassword: String): Result<Unit> {
+        val token = tokenManager.accessToken.value
+        if (token.isEmpty()) return Result.failure(Exception("Sessione non valida"))
+        return apiClient.changePassword(token, oldPassword, newPassword)
     }
     
     suspend fun getThesisDocuments(): List<com.laba.firenze.ui.thesis.ThesisDocument> {
@@ -616,6 +724,39 @@ class SessionRepository @Inject constructor(
             desc.contains("bollettino") -> Icons.Default.Download
             desc.contains("pergamena") -> Icons.Default.Verified
             else -> Icons.Default.Description
+        }
+    }
+    
+    // MARK: - API Version Helpers
+    
+    /**
+     * Verifica se l'app sta usando l'API v3
+     */
+    private fun isApiV3(): Boolean {
+        val prefs = context.getSharedPreferences("laba_preferences", Context.MODE_PRIVATE)
+        val version = prefs.getString("laba.apiVersion", "v2") ?: "v2"
+        return version == "v3"
+    }
+    
+    /**
+     * Invia il token FCM al server (solo per v3)
+     */
+    private suspend fun sendFcmTokenToServer(accessToken: String) {
+        try {
+            val fcmToken = notificationManager.getToken()
+            if (fcmToken != null) {
+                val success = apiClient.setFcmToken(accessToken, fcmToken)
+                if (success) {
+                    Log.d("SessionRepository", "✅ FCM token inviato con successo al server")
+                } else {
+                    Log.w("SessionRepository", "⚠️ Fallito invio FCM token al server")
+                }
+            } else {
+                Log.w("SessionRepository", "⚠️ FCM token non disponibile")
+            }
+        } catch (e: Exception) {
+            Log.e("SessionRepository", "❌ Errore invio FCM token: ${e.message}", e)
+            // Non bloccare il login se fallisce l'invio del token
         }
     }
     

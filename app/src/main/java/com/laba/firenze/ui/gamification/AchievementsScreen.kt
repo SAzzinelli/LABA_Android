@@ -1,6 +1,7 @@
 package com.laba.firenze.ui.gamification
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -80,6 +81,8 @@ fun AchievementsScreen(
         filteredAchievements.groupBy { achievement -> achievement.category }
     }
     
+    var showCFAppInfo by remember { mutableStateOf(false) }
+    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -90,6 +93,11 @@ fun AchievementsScreen(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Indietro"
                         )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showCFAppInfo = true }) {
+                        Icon(Icons.Default.Info, contentDescription = "Info CFApp")
                     }
                 }
             )
@@ -108,7 +116,8 @@ fun AchievementsScreen(
                     AchievementOverviewSection(
                         totalPoints = totalPoints,
                         unlockedCount = achievements.count { it.isUnlocked },
-                        totalCount = achievements.size
+                        totalCount = achievements.size,
+                        navController = navController
                     )
                 }
                 
@@ -147,11 +156,19 @@ fun AchievementsScreen(
             }
         }
         
+        // CFApp Info Dialog
+        if (showCFAppInfo) {
+            CFAppInfoDialog(onDismiss = { showCFAppInfo = false })
+        }
+        
         // Achievement Detail Dialog
         selectedAchievement?.let { achievement ->
             AchievementDetailDialog(
                 achievement = achievement,
-                onDismiss = { selectedAchievement = null },
+                onDismiss = { 
+                    @Suppress("UNUSED_VALUE")
+                    selectedAchievement = null 
+                },
                 stats = viewModel.stats.value
             )
         }
@@ -162,44 +179,71 @@ fun AchievementsScreen(
 fun AchievementOverviewSection(
     totalPoints: Int,
     unlockedCount: Int,
-    totalCount: Int
+    @Suppress("UNUSED_PARAMETER") totalCount: Int,
+    navController: NavController
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Introduction text
-        Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "I tuoi traguardi in App",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "Traccia i tuoi progressi, sblocca achievement e scopri il tuo percorso in LABA attraverso punti e riconoscimenti.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        // Introduction text (come iOS)
+        Text(
+            text = "Traccia i tuoi progressi, sblocca achievement e scopri il tuo percorso in LABA attraverso CFApp e riconoscimenti.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         
-        // Points and Achievements (2-column layout)
+        // Points and Achievements (2-column layout, come iOS)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             MetricCard(
-                title = "Punti Totali",
-                icon = "⭐",
+                title = "CFApp totali",
+                useCFAppIcon = true,
                 value = totalPoints.toString(),
                 modifier = Modifier.weight(1f)
             )
             MetricCard(
-                title = "Sbloccati",
+                title = "Traguardi sbloccati",
+                useCFAppIcon = false,
                 icon = "🏆",
                 value = "$unlockedCount",
                 modifier = Modifier.weight(1f)
             )
+        }
+
+        // Year Recap Button
+        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+        TextButton(
+            onClick = { navController.navigate("year-recap") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("✨", modifier = Modifier.padding(end = 8.dp))
+                    Column(horizontalAlignment = Alignment.Start) {
+                        Text(
+                            "Il tuo Anno in LABA",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            "Sì, esatto... abbiamo in LABA un wrapped annuale",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -207,13 +251,14 @@ fun AchievementOverviewSection(
 @Composable
 fun MetricCard(
     title: String,
-    icon: String,
+    useCFAppIcon: Boolean = false,
+    icon: String = "⭐",
     value: String,
     modifier: Modifier = Modifier
 ) {
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
         ),
         modifier = modifier
     ) {
@@ -222,22 +267,42 @@ fun MetricCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                text = icon,
-                fontSize = 32.sp
-            )
+            if (useCFAppIcon) {
+                CFAppIcon(modifier = Modifier.size(32.dp))
+            } else {
+                Text(text = icon, fontSize = 32.sp)
+            }
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = value,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
+    }
+}
+
+@Composable
+private fun CFAppIcon(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .background(
+                MaterialTheme.colorScheme.primary,
+                MaterialTheme.shapes.small
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "¢",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White
+        )
     }
 }
 
@@ -256,21 +321,13 @@ fun AchievementCategoryHeader(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = category.iconName,
-                    fontSize = 20.sp
-                )
-                Text(
-                    text = category.displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
+            // Solo il titolo, senza icona
+            Text(
+                text = category.displayName,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
             Icon(
                 imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                 contentDescription = if (isExpanded) "Collapse" else "Expand",
@@ -365,11 +422,11 @@ fun AchievementRow(
             
             Spacer(modifier = Modifier.width(8.dp))
             
-            // Points Badge
+            // Points Badge (CFApp, come iOS)
             if (achievement.isUnlocked) {
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
                         text = "${achievement.points}",
@@ -377,12 +434,7 @@ fun AchievementRow(
                         fontWeight = FontWeight.Bold,
                         color = Color(achievement.category.colorHex)
                     )
-                    Icon(
-                        Icons.Default.Star,
-                        contentDescription = null,
-                        tint = Color(0xFFFFD700),
-                        modifier = Modifier.size(16.dp)
-                    )
+                    CFAppIcon(modifier = Modifier.size(18.dp))
                 }
             }
         }
@@ -397,7 +449,6 @@ fun AchievementUnlockedToast(
     onClick: () -> Unit
 ) {
     var isVisible by remember { mutableStateOf(true) }
-    var offset by remember { mutableStateOf(0f) }
     
     // Auto-dismiss after 4 seconds
     LaunchedEffect(Unit) {
@@ -407,16 +458,16 @@ fun AchievementUnlockedToast(
     }
     
     if (isVisible) {
-        androidx.compose.animation.AnimatedVisibility(
+        AnimatedVisibility(
             visible = isVisible,
-            enter = androidx.compose.animation.slideInVertically(
+            enter = slideInVertically(
                 initialOffsetY = { -it },
-                animationSpec = androidx.compose.animation.core.spring()
-            ) + androidx.compose.animation.fadeIn(),
-            exit = androidx.compose.animation.slideOutVertically(
+                animationSpec = spring()
+            ) + fadeIn(),
+            exit = slideOutVertically(
                 targetOffsetY = { -it },
-                animationSpec = androidx.compose.animation.core.spring()
-            ) + androidx.compose.animation.fadeOut()
+                animationSpec = spring()
+            ) + fadeOut()
         ) {
             Card(
                 modifier = Modifier
@@ -478,7 +529,7 @@ fun AchievementUnlockedToast(
                                 modifier = Modifier.size(14.dp)
                             )
                             Text(
-                                text = "+${achievement.points} punti",
+                                text = "+${achievement.points} CFApp",
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color(achievement.category.colorHex)
@@ -491,12 +542,82 @@ fun AchievementUnlockedToast(
     }
 }
 
+@Composable
+private fun CFAppInfoDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                CFAppIcon(modifier = Modifier.size(32.dp))
+                Text("CFApp", style = MaterialTheme.typography.titleLarge)
+            }
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "Cos'è",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "I CFApp sono punti che puoi accumulare nell'app. Sono gratuiti e attualmente non disponibili.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "Come si ottengono",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "Si ottengono tramite traguardi e minigiochi LABA.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "Attenzione",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFFF9800)
+                    )
+                    Text(
+                        "Non confondere i CFApp con i CFA (Crediti Formativi Accademici): sono due cose completamente diverse.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Chiudi")
+            }
+        }
+    )
+}
+
 // Achievement Detail Dialog
 @Composable
 fun AchievementDetailDialog(
     achievement: Achievement,
     onDismiss: () -> Unit,
-    stats: com.laba.firenze.domain.model.UserStats
+    @Suppress("UNUSED_PARAMETER") stats: com.laba.firenze.domain.model.UserStats
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -555,7 +676,7 @@ fun AchievementDetailDialog(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Punti",
+                            text = "CFApp",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }

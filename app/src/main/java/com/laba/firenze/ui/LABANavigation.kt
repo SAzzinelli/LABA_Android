@@ -4,7 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,9 +24,9 @@ import androidx.navigation.compose.rememberNavController
 import com.laba.firenze.ui.common.AppLoadingScreen
 import com.laba.firenze.ui.common.LoginScreen
 import com.laba.firenze.ui.courses.CoursesScreen
-import com.laba.firenze.ui.courses.CourseDetailScreen
 import com.laba.firenze.ui.documents.ProgrammiScreen
 import com.laba.firenze.ui.documents.DispenseScreen
+import com.laba.firenze.ui.courses.CourseDetailScreen
 import com.laba.firenze.ui.documents.DocumentViewerScreen
 import com.laba.firenze.ui.exams.ExamsScreen
 import com.laba.firenze.ui.exams.ExamDetailScreen
@@ -47,13 +47,17 @@ import com.laba.firenze.ui.profile.StudentCardScreen
 import com.laba.firenze.ui.profile.ServiziScreen
 import com.laba.firenze.ui.profile.AnagraficaScreen
 import com.laba.firenze.ui.library.BibliotecaScreen
+import com.laba.firenze.ui.service.ServiceLabaScreen
 import com.laba.firenze.ui.guides.WiFiLABAScreen
 import com.laba.firenze.ui.guides.StudentServerGuideScreen
 import com.laba.firenze.ui.guides.PrinterGuideScreen
 import com.laba.firenze.ui.gamification.AchievementsScreen
+import com.laba.firenze.ui.gamification.YearRecapScreen
 import com.laba.firenze.ui.gamification.AchievementUnlockedToast
 import com.laba.firenze.ui.gamification.AchievementDetailDialog
+import com.laba.firenze.ui.lessons.LessonDetailScreen
 import com.laba.firenze.domain.model.Achievement
+import com.laba.firenze.MainActivityViewModel
 
 sealed class LABANavigation(val route: String, val icon: ImageVector, val title: String) {
     object Home : LABANavigation("home", Icons.Default.Home, "Home")
@@ -68,10 +72,23 @@ sealed class LABANavigation(val route: String, val icon: ImageVector, val title:
 @Composable
 fun LABANavigation(
     modifier: Modifier = Modifier,
-    navigationViewModel: com.laba.firenze.ui.navigation.NavigationViewModel = hiltViewModel()
+    navigationViewModel: com.laba.firenze.ui.navigation.NavigationViewModel = hiltViewModel(),
+    mainViewModel: MainActivityViewModel = hiltViewModel()
 ) {
     val navController = rememberNavController()
     val activeTabs by navigationViewModel.activeTabs.collectAsStateWithLifecycle()
+    val pendingLessonId by mainViewModel.pendingDeepLink.collectAsStateWithLifecycle()
+    
+    // Deep link laba://lesson/{lessonId} (identico a iOS)
+    LaunchedEffect(pendingLessonId) {
+        pendingLessonId?.let { id ->
+            navController.navigate("lesson/$id") {
+                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+            }
+            mainViewModel.clearPendingDeepLink()
+        }
+    }
     
     // Achievement Unlocked Toast Banner (global) - shown in all screens
     val achievementManagerViewModel: com.laba.firenze.ui.gamification.AchievementsViewModel = hiltViewModel()
@@ -132,8 +149,8 @@ fun LABANavigation(
                 }
             }
         }
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             NavHost(
                 navController = navController,
                 startDestination = LABANavigation.Home.route,
@@ -282,9 +299,15 @@ fun LABANavigation(
             composable("animation_settings") {
                 com.laba.firenze.ui.appearance.AnimationSettingsScreen(navController)
             }
-            
-            composable("navigation_customization") {
-                com.laba.firenze.ui.appearance.NavigationCustomizationScreen(navController, navigationViewModel.navigationManager)
+
+            composable("home_section_order") {
+                com.laba.firenze.ui.home.HomeSectionOrderScreen(navController)
+            }
+            composable("navigation_custom") {
+                com.laba.firenze.ui.appearance.NavigationCustomizationScreen(
+                    navController = navController,
+                    navigationManager = navigationViewModel.navigationManager
+                )
             }
 
             // New Features
@@ -296,6 +319,9 @@ fun LABANavigation(
             }
             composable("achievements") {
                 AchievementsScreen(navController = navController)
+            }
+            composable("year-recap") {
+                YearRecapScreen(navController = navController)
             }
             composable("group_selection") {
                 com.laba.firenze.ui.profile.GroupSelectionScreen(navController = navController)
@@ -323,6 +349,11 @@ fun LABANavigation(
                 BibliotecaScreen(navController)
             }
             
+            // Service LABA
+            composable("service-laba") {
+                ServiceLabaScreen(navController)
+            }
+            
             // Guide
             composable("wifi-laba") {
                 WiFiLABAScreen(navController)
@@ -332,6 +363,12 @@ fun LABANavigation(
             }
             composable("printer-guide") {
                 PrinterGuideScreen(navController)
+            }
+            
+            // Deep link: laba://lesson/{lessonId}
+            composable("lesson/{lessonId}") { backStackEntry ->
+                val lessonId = backStackEntry.arguments?.getString("lessonId") ?: ""
+                LessonDetailScreen(lessonId = lessonId, navController = navController)
             }
         }
         

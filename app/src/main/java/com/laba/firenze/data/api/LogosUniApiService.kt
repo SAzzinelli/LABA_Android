@@ -18,7 +18,7 @@ interface LogosUniApiService {
                 suspend fun getExams(@Header("Authorization") token: String): Response<ExamsResponse>
 
     @GET("Seminars")
-    suspend fun getSeminars(@Header("Authorization") token: String): Response<SeminariResponse>
+    suspend fun getSeminars(@Header("Authorization") token: String): Response<SeminariResponseV3>
 
     @POST("Notification/GetNotifications") // Corretto: POST secondo documentazione API
     @Headers("Content-Type: application/json")
@@ -37,11 +37,30 @@ interface LogosUniApiService {
     @POST("Notifications/MarkAllAsRead")
     suspend fun markAllNotificationsAsRead(@Header("Authorization") token: String): Response<Unit>
 
+    // MARK: - API v3 Notifications (Firebase) — baseURL già include /api, evita doppio api/api
+    @POST("Notifications/GetNotifications")
+    @Headers("Content-Type: application/json")
+    suspend fun getNotificationsV3(
+        @Header("Authorization") token: String,
+        @Body request: NotificationsRequestV3
+    ): Response<NotificationsResponseV3>
+    
+    @GET("Notifications/MarkNotificationsAsRead")
+    suspend fun markAllNotificationsAsReadV3(@Header("Authorization") token: String): Response<Unit>
+    
+    @POST("setFcmToken")
+    @Headers("Content-Type: application/json")
+    suspend fun setFcmToken(
+        @Header("Authorization") token: String,
+        @Body request: FcmTokenRequest
+    ): Response<Unit>
+
     // MARK: - Documents (identico a iOS endpoints)
     @GET("Documents")
     suspend fun getDocuments(@Header("Authorization") token: String): Response<LogosDocumentsResponse>
 
     @GET("Documents/GetDocument")
+    @Headers("Accept: application/pdf, application/octet-stream, */*")
     @retrofit2.http.Streaming
     suspend fun getDocumentById(
         @Header("Authorization") token: String,
@@ -54,4 +73,17 @@ interface LogosUniApiService {
     
     @GET("ThesisInfo")
     suspend fun getThesisDocuments(@Header("Authorization") token: String): Response<ThesisDocumentsResponse>
+
+    /** Cambio password (identico a iOS APIClient.changePassword): POST con query params. */
+    @POST("User/ChangePassword")
+    suspend fun changePassword(
+        @Header("Authorization") token: String,
+        @Query("oldPassword") oldPassword: String,
+        @Query("newPassword") newPassword: String
+    ): Response<ChangePasswordResponse>
 }
+
+data class ChangePasswordResponse(
+    val success: Boolean,
+    val errorSummary: String? = null
+)

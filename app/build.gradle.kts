@@ -2,7 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.dagger.hilt.android")
-    id("kotlin-parcelize")
+    id("org.jetbrains.kotlin.plugin.parcelize")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
     id("com.google.gms.google-services")
@@ -24,6 +24,12 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        // ImgBB API key: add IMGBB_API_KEY to local.properties or gradle.properties
+        val imgbbKey = project.findProperty("IMGBB_API_KEY") as? String ?: ""
+        buildConfigField("String", "IMGBB_API_KEY", "\"$imgbbKey\"")
+        // SuperSaas API key: add SUPERSAAS_API_KEY to local.properties or gradle.properties
+        val superSaasKey = project.findProperty("SUPERSAAS_API_KEY") as? String ?: "tTu_7aaIHDWCQGuGz_4cQA"
+        buildConfigField("String", "SUPERSAAS_API_KEY", "\"$superSaasKey\"")
     }
 
     buildTypes {
@@ -46,11 +52,14 @@ android {
     kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+            // KT-73255: applica annotazioni (es. @Inject) sia al parametro che al field
+            freeCompilerArgs.add("-Xannotation-default-target=param-property")
         }
     }
     
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     
     lint {
@@ -60,8 +69,21 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            pickFirsts += "assets/faq.json"
         }
     }
+}
+
+// Workaround: alcuni plugin/IDE si aspettano il task testClasses (tipico del plugin Java).
+// Nei moduli Android non esiste; registriamo un no-op per evitare "task testClasses not found".
+tasks.register("testClasses") {
+    group = "verification"
+    description = "Dummy task for plugin/IDE compatibility (Android app module has no Java test source set)."
+}
+
+// Workaround: check*Classpath fallisce con "Cannot fingerprint compileVersionMap" (AGP 8.7 + Gradle 8.9)
+tasks.matching { it.name.startsWith("check") && it.name.endsWith("Classpath") }.configureEach {
+    enabled = false
 }
 
 // Allineamento versioni Kotlin - usa versione compatibile
@@ -87,6 +109,7 @@ dependencies {
     // Jetpack Compose
     implementation(platform("androidx.compose:compose-bom:2024.02.00"))
     implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
@@ -101,9 +124,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
     
     // Hilt Dependency Injection
-    implementation("com.google.dagger:hilt-android:2.54")
+    implementation("com.google.dagger:hilt-android:2.57.2")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
-    ksp("com.google.dagger:hilt-compiler:2.54")
+    ksp("com.google.dagger:hilt-compiler:2.57.2")
     
     // Networking
     implementation("com.squareup.retrofit2:retrofit:2.9.0")

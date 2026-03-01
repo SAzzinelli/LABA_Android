@@ -1,5 +1,6 @@
 package com.laba.firenze.data.api
 
+import com.laba.firenze.data.api.ProfilePhotoRow
 import com.laba.firenze.domain.model.AchievementIdResponse
 import com.laba.firenze.domain.model.SupabaseAchievement
 import com.laba.firenze.domain.model.SupabaseUserStats
@@ -39,4 +40,28 @@ interface SupabaseApi {
         @Header("apikey") apiKey: String,
         @Header("Prefer") prefer: String = "return=representation,resolution=merge-duplicates"
     ): Response<Void>
+
+    /** Foto profilo (ImgBB URL) - allineato a iOS ProfilePhotoSupabaseService */
+    @GET("rest/v1/user_profile_photos")
+    suspend fun getProfilePhoto(
+        @Query("user_email") userEmail: String,
+        @Query("select") select: String = "imgbb_url,delete_url",
+        @Header("Authorization") authorization: String,
+        @Header("apikey") apiKey: String
+    ): Response<List<ProfilePhotoRow>>
+
+    @POST("rest/v1/user_profile_photos")
+    @Headers("Prefer: resolution=merge-duplicates")
+    suspend fun saveProfilePhoto(
+        @Body body: ProfilePhotoSaveBody,
+        @Header("Authorization") authorization: String,
+        @Header("apikey") apiKey: String
+    ): Response<Void>
 }
+
+data class ProfilePhotoSaveBody(
+    val user_email: String,
+    val imgbb_url: String,
+    val delete_url: String?,
+    val updated_at: String
+)

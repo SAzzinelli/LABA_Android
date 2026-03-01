@@ -30,24 +30,50 @@ class SeminarsViewModel @Inject constructor(
     private fun loadSeminars() {
         viewModelScope.launch {
             sessionRepository.seminars.collect { seminars ->
-                _uiState.value = _uiState.value.copy(
+                val state = _uiState.value
+                val filtered = applyFilterAndSearch(seminars, state.filter, state.searchQuery)
+                _uiState.value = state.copy(
                     allSeminars = seminars,
-                    seminars = filterSeminars(seminars, _uiState.value.searchQuery)
+                    seminars = filtered
                 )
             }
         }
     }
     
     fun updateSearchQuery(query: String) {
-        val currentState = _uiState.value
-        _uiState.value = currentState.copy(
+        val state = _uiState.value
+        _uiState.value = state.copy(
             searchQuery = query,
-            seminars = filterSeminars(currentState.allSeminars, query)
+            seminars = applyFilterAndSearch(state.allSeminars, state.filter, query)
         )
     }
     
-    fun setSelectedTab(tab: SeminariTab) {
-        _uiState.value = _uiState.value.copy(selectedTab = tab)
+    fun setFilter(filter: SeminariFilter) {
+        val state = _uiState.value
+        _uiState.value = state.copy(
+            filter = filter,
+            seminars = applyFilterAndSearch(state.allSeminars, filter, state.searchQuery)
+        )
+    }
+    
+    private fun applyFilterAndSearch(
+        seminars: List<Seminario>,
+        filter: SeminariFilter,
+        searchQuery: String
+    ): List<Seminario> {
+        val base = when (filter) {
+            SeminariFilter.TUTTI -> seminars
+            SeminariFilter.DISPONIBILI -> seminars.filter { !it.partecipato }
+            SeminariFilter.FREQUENTATI -> seminars.filter { it.partecipato }
+        }
+        return if (searchQuery.isBlank()) base else {
+            val q = searchQuery.lowercase()
+            base.filter {
+                seminarTitle(it.titolo).lowercase().contains(q) ||
+                prettifyTitle(seminarTitle(it.titolo)).lowercase().contains(q) ||
+                it.docente?.lowercase()?.contains(q) == true
+            }
+        }
     }
     
     fun sendMissingSeminarEmail(seminarName: String, context: android.content.Context) {
@@ -80,14 +106,6 @@ class SeminarsViewModel @Inject constructor(
         context.startActivity(Intent.createChooser(intent, "Invia email"))
     }
     
-    private fun filterSeminars(seminars: List<Seminario>, searchQuery: String): List<Seminario> {
-        if (searchQuery.isBlank()) return seminars
-        
-        return seminars.filter { seminar ->
-            seminar.titolo.contains(searchQuery, ignoreCase = true) ||
-            seminar.docente?.contains(searchQuery, ignoreCase = true) == true
-        }
-    }
     
     fun refreshSeminars() {
         viewModelScope.launch {
@@ -100,8 +118,9 @@ class SeminarsViewModel @Inject constructor(
     }
 }
 
-enum class SeminariTab(val label: String) {
-    RICHIESTE("Richieste"),
+enum class SeminariFilter(val label: String) {
+    TUTTI("Tutti"),
+    DISPONIBILI("Disponibili"),
     FREQUENTATI("Frequentati")
 }
 
@@ -109,7 +128,7 @@ data class SeminarsUiState(
     val allSeminars: List<Seminario> = emptyList(),
     val seminars: List<Seminario> = emptyList(),
     val searchQuery: String = "",
-    val selectedTab: SeminariTab = SeminariTab.RICHIESTE,
+    val filter: SeminariFilter = SeminariFilter.TUTTI,
     val isLoading: Boolean = false,
     val error: String? = null
 )

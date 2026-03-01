@@ -10,11 +10,30 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MainActivityViewModel @Inject constructor(
-    private val sessionRepository: SessionRepository
+    private val sessionRepository: SessionRepository,
+    val appearancePreferences: com.laba.firenze.data.local.AppearancePreferences
 ) : ViewModel() {
+    
+    val accentChoice: StateFlow<String> = appearancePreferences.accentChoice
+    val themePreference: kotlinx.coroutines.flow.Flow<String> = appearancePreferences.themePreference
     
     private val _authState = MutableStateFlow(AuthState())
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
+    
+    /** True durante il refresh del token (per mostrare "Aggiornamento accesso" come su iOS). */
+    val isRefreshingSession: StateFlow<Boolean> = sessionRepository.isRefreshingSession
+    
+    /** Deep link laba://lesson/{lessonId} (identico a iOS handleDeepLink). */
+    private val _pendingDeepLink = MutableStateFlow<String?>(null)
+    val pendingDeepLink: StateFlow<String?> = _pendingDeepLink.asStateFlow()
+    
+    fun setPendingDeepLink(lessonId: String?) {
+        _pendingDeepLink.value = lessonId
+    }
+    
+    fun clearPendingDeepLink() {
+        _pendingDeepLink.value = null
+    }
     
     init {
         // Monitor login state (mantieni isLoading attivo se i dati stanno caricando)

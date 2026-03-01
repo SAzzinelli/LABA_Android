@@ -27,7 +27,7 @@ fun NotificationDetailSheet(
     ) {
         LazyColumn(
             modifier = Modifier.heightIn(max = 600.dp),
-            contentPadding = PaddingValues(16.dp)
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp)
         ) {
             // Header with icon, title, date, and status
             item {

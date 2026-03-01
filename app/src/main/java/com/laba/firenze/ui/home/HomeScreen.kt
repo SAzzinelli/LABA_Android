@@ -5,13 +5,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.displayCutout
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -42,17 +35,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.laba.firenze.domain.model.Esame
 import com.laba.firenze.data.repository.SessionRepository
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalContext
+import com.laba.firenze.ui.home.HomeViewModel
 import android.content.SharedPreferences
 import kotlin.math.*
 import kotlin.random.Random
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.compose.ui.unit.Dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,23 +53,43 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val sharedPrefs = remember { 
+        context.getSharedPreferences("LABA_PREFS", Context.MODE_PRIVATE)
+    }
+    
+    // Controlla se le funzionalità sono abilitate
+    val timetableEnabled = remember { 
+        sharedPrefs.getBoolean("laba.timetable.enabled", false)
+    }
+    @Suppress("UNUSED_VARIABLE")
+    val achievementsEnabled = remember { 
+        sharedPrefs.getBoolean("laba.achievements.enabled", false)
+    }
     
     LaunchedEffect(Unit) { 
         viewModel.refreshOnAppear() 
     }
+    
+    val sectionOrder by viewModel.sectionOrder.collectAsStateWithLifecycle()
+    val profile = viewModel.getUserProfile()
+    val exams = uiState.bookedExams
+    val allExams = viewModel.getAllExams()
+    val shouldShowBooked = viewModel.shouldShowBookedExams(profile, allExams)
     
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             start = 20.dp, 
             end = 20.dp, 
-            top = 60.dp, // Aumentato per evitare che il punch hole copra l'hero
+            top = 60.dp,
             bottom = 140.dp
         ),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-                // HERO SECTION
-                item {
+        sectionOrder.forEach { sectionId ->
+            when (sectionId) {
+                "hero" -> item {
                     val heroInfo = viewModel.getHeroInfo()
                     HeroSection(
                         heroInfo = heroInfo,
@@ -85,74 +97,66 @@ fun HomeScreen(
                         isGraduated = uiState.isGraduated
                     )
                 }
-        
-        // KPI CARDS
-        item {
-            KpiCardsSection(
-                passedExams = uiState.passedExamsCount,
-                missingExams = uiState.missingExamsCount,
-                cfaEarned = uiState.cfaEarned,
-                totalExams = uiState.totalExamsCount
-            )
-        }
-        
-        
-        // YEAR PROGRESS + CAREER AVERAGE
-        item {
-            val profile = viewModel.getUserProfile()
-            YearProgressAndAverageSection(
-                yearProgress = uiState.yearProgress,
-                careerAverage = uiState.careerAverage,
-                isBiennio = isBiennioLevel(profile),
-                onNavigateToGrades = { navController.navigate("grades/trend") }
-            )
-        }
-        
-        // ESAMI PRENOTATI (solo se non laureato e ha currentYear, identico a iOS)
-        val profile = viewModel.getUserProfile()
-        val exams = uiState.bookedExams
-        val allExams = viewModel.getAllExams()
-        val shouldShowBooked = viewModel.shouldShowBookedExams(profile, allExams)
-        
-        if (!uiState.isGraduated && profile?.currentYear != null && shouldShowBooked && exams.isNotEmpty()) {
-            item {
-                BookedExamsSection(
-                    exams = exams.take(3), // Mostra solo i primi 3
-                    onNavigateToAll = { navController.navigate("esami-prenotati") }
-                )
-            }
-        }
-        
-        // LESSONS TODAY (sempre presente, come iOS)
-        item {
-            LessonsTodayCard(lessons = uiState.lessonsToday)
-        }
-        
-        // PER TE SECTION (come iOS)
-        item {
-            PerTeSection(
-                viewModel = viewModel,
-                onNavigate = { route -> 
-                    when (route) {
-                        "Voto di laurea" -> navController.navigate("calcola-voto-laurea")
-                        "Simula la tua media" -> navController.navigate("simula-media")
+                "kpi" -> item {
+                    KpiCardsSection(
+                        passedExams = uiState.passedExamsCount,
+                        missingExams = uiState.missingExamsCount,
+                        cfaEarned = uiState.cfaEarned,
+                        totalExams = uiState.totalExamsCount
+                    )
+                }
+                "progress" -> item {
+                    YearProgressAndAverageSection(
+                        yearProgress = uiState.yearProgress,
+                        careerAverage = uiState.careerAverage,
+                        isBiennio = isBiennioLevel(profile),
+                        onNavigateToGrades = { navController.navigate("grades/trend") }
+                    )
+                }
+                "exams" -> {
+                    // Esami in Home solo nei periodi prefissati d'esame (come iOS)
+                    if (viewModel.isTodayInExamSession() && !uiState.isGraduated && profile?.currentYear != null && shouldShowBooked && exams.isNotEmpty()) {
+                        item {
+                            BookedExamsSection(
+                                exams = exams.take(3),
+                                onNavigateToAll = { navController.navigate("esami-prenotati") }
+                            )
+                        }
                     }
                 }
-            )
-        }
-        
-        // SERVIZI SECTION (separata, come iOS) - senza "Gestione servizi"
-        item {
-            ServiziSection(
-                onNavigate = { route ->
-                    when (route) {
-                        "Service LABA" -> navController.navigate("service-laba")
-                        "Prenotazione Aule" -> navController.navigate("prenotazione-aule")
-                        "Biblioteca" -> navController.navigate("biblioteca")
+                "lessons" -> {
+                    if (timetableEnabled) {
+                        item {
+                            LessonsTodayCard(lessons = uiState.lessonsToday)
+                        }
                     }
-                },
-                showGestioneServizi = false
-            )
+                }
+                "quickActions" -> {
+                    item {
+                        PerTeSection(
+                            viewModel = viewModel,
+                            onNavigate = { route ->
+                                when (route) {
+                                    "Voto di laurea" -> navController.navigate("calcola-voto-laurea")
+                                    "Simula la tua media" -> navController.navigate("simula-media")
+                                }
+                            }
+                        )
+                    }
+                    item {
+                        ServiziSection(
+                            onNavigate = { route ->
+                                when (route) {
+                                    "Service LABA" -> navController.navigate("strumentazione")
+                                    "Prenotazione Aule" -> navController.navigate("prenotazione-aule")
+                                    "Biblioteca" -> navController.navigate("biblioteca")
+                                }
+                            },
+                            showGestioneServizi = false
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -209,7 +213,7 @@ private fun HeroSection(
         with(density) {
             Canvas(
                 modifier = Modifier.fillMaxSize()
-            )             {
+            ) {
                 // Convert animationPhase (0-1) to time scale (60s duration)
                 val time = animationPhase * 60f
                 
@@ -251,9 +255,8 @@ private fun HeroSection(
 }
 
 @Composable
-private fun StatusPillsRow(heroInfo: HeroInfo, pills: List<String>, isGraduated: Boolean) {
+private fun StatusPillsRow(heroInfo: HeroInfo, @Suppress("UNUSED_PARAMETER") pills: List<String>, isGraduated: Boolean) {
     // pills parameter not used but kept for API consistency
-    @Suppress("UNUSED_PARAMETER")
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -269,7 +272,7 @@ private fun StatusPillsRow(heroInfo: HeroInfo, pills: List<String>, isGraduated:
         } else {
             // Se non laureato: mostra anno di corso e corso compatto
             heroInfo.studyYear?.let { year ->
-                Pill("${getItalianOrdinalYear(year)}")
+                Pill(getItalianOrdinalYear(year))
             }
             
             // Corso compatto + A.A. (se disponibile)
@@ -367,12 +370,10 @@ private fun KpiCardsSection(
 private fun KpiCard(
     title: String,
     value: String,
-    emphasizeGlow: Boolean, // Non utilizzato ma mantenuto per coerenza API
+    @Suppress("UNUSED_PARAMETER") emphasizeGlow: Boolean, // Non utilizzato ma mantenuto per coerenza API
     isComplete: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    @Suppress("UNUSED_PARAMETER")
-    
     Box(
         modifier = modifier.height(96.dp)
     ) {
@@ -605,7 +606,7 @@ private fun CareerAverageCard(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = average?.let { String.format("%.2f", it) } ?: "—",
+                    text = average?.let { String.format(Locale.getDefault(), "%.2f", it) } ?: "—",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = FontFamily.Monospace
@@ -911,6 +912,7 @@ private fun PerTeSection(
     onNavigate: (String) -> Unit
 ) {
     val profile = viewModel.getUserProfile()
+    @Suppress("UNUSED_VARIABLE")
     val allExams = viewModel.getAllExams()
     val isGraduated = profile?.status?.lowercase()?.contains("laureat") == true
     val hasCompletedAllExams = viewModel.hasCompletedAllGraduationExams()
@@ -1026,7 +1028,10 @@ private fun PerTeSection(
     // Alert per sezione non disponibile
     if (showGraduationGradeAlert) {
         AlertDialog(
-            onDismissRequest = { showGraduationGradeAlert = false },
+            onDismissRequest = { 
+                @Suppress("UNUSED_VALUE")
+                showGraduationGradeAlert = false 
+            },
             title = { Text("Sezione non disponibile") },
             text = {
                 Text(
@@ -1046,7 +1051,7 @@ private fun PerTeSection(
 @Composable
 private fun ServiziSection(
     onNavigate: (String) -> Unit,
-    showGestioneServizi: Boolean = true
+    @Suppress("UNUSED_PARAMETER") showGestioneServizi: Boolean = true
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -1239,8 +1244,8 @@ private fun DrawScope.drawWavePatternHero(size: Size, time: Float) {
     
     for (i in 0 until waveCount) {
         val yPos = i * spacing
-        val wavePhase = sin((i * 0.5 + t * 1.2).toDouble()) * 0.3
-        val amplitude: Float = 8f + (i % 3) * 2
+        val wavePhase = sin((i * 0.5 + t * 1.2)) * 0.3f
+        val amplitude: Float = 8f + (i % 3) * 2f
         
         val wavePath = Path()
         
@@ -1420,7 +1425,7 @@ private fun BookedExamsSection(
     exams: List<Esame>,
     onNavigateToAll: () -> Unit
 ) {
-    val pastelRed = Color(0xFFFF3B30) // Rosso vivace identico a iOS
+    val red = Color(0xFFE53935) // Rosso come originale
     
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1441,13 +1446,13 @@ private fun BookedExamsSection(
                 Icon(
                     imageVector = Icons.Default.CalendarMonth,
                     contentDescription = null,
-                    tint = pastelRed
+                    tint = red
                 )
                 Text(
                     text = "Prossimi esami",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = pastelRed
+                    color = red
                 )
             }
             
@@ -1475,7 +1480,7 @@ private fun BookedExamsSection(
                     Icon(
                         imageVector = Icons.Default.CalendarMonth,
                         contentDescription = null,
-                        tint = pastelRed,
+                        tint = red,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -1483,13 +1488,13 @@ private fun BookedExamsSection(
                         text = "Vedi esami prenotati",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
-                        color = pastelRed
+                        color = red
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Icon(
                         imageVector = Icons.Default.ChevronRight,
                         contentDescription = null,
-                        tint = pastelRed.copy(alpha = 0.6f),
+                        tint = red.copy(alpha = 0.6f),
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -1503,19 +1508,19 @@ private fun BookedExamRow(
     exam: Esame,
     number: Int
 ) {
-    val pastelRed = Color(0xFFFF3B30) // Rosso vivace identico a iOS
+    val red = Color(0xFFE53935) // Rosso come originale
     
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Numero in cerchio rosso pastello
+        // Numero in cerchio rosso
         Box(
             modifier = Modifier
                 .size(24.dp)
                 .clip(CircleShape)
-                .background(pastelRed),
+                .background(red),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -1588,6 +1593,7 @@ private fun surnamesOnly(docente: String): String {
 
 // MARK: - Animated Glow Background
 @Composable
+@Suppress("UNUSED_FUNCTION")
 private fun AnimatedGlowBackground(
     modifier: Modifier = Modifier,
     isActive: Boolean,
@@ -1662,6 +1668,7 @@ data class YearProgress(
         }
     }
     
+    @Suppress("UNUSED_FUNCTION")
     fun getTotalForYear(year: Int): Int {
         return when (year) {
             1 -> year1Total
