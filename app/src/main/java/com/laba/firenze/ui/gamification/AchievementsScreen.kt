@@ -27,6 +27,7 @@ import androidx.navigation.NavController
 import com.laba.firenze.data.gamification.AchievementManager
 import com.laba.firenze.domain.model.Achievement
 import com.laba.firenze.domain.model.AchievementCategory
+import com.laba.firenze.domain.model.AchievementDetailedDescriptions
 import com.laba.firenze.ui.gamification.AchievementIconHelper
 import com.laba.firenze.ui.home.HomeViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -845,6 +846,49 @@ fun AchievementDetailDialog(
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFFF9800)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Sezione Descrizione dettagliata (come iOS)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        MaterialTheme.colorScheme.surfaceContainerHighest,
+                        RoundedCornerShape(16.dp)
+                    )
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = AchievementDetailedDescriptions.get(achievement),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Punti: ${achievement.points}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = Color(achievement.rarity.colorHex).copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            text = achievement.rarity.displayName,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(achievement.rarity.colorHex),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         )
                     }
                 }

@@ -2,17 +2,21 @@ package com.laba.firenze.ui.profile
 
 import android.app.Activity
 import android.app.Dialog
+import androidx.activity.ComponentActivity
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
 import android.view.Window
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeViewModelStoreOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.laba.firenze.ui.theme.LABAFirenzeTheme
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.net.toUri
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -667,37 +671,47 @@ fun ProfileScreen(
     }
     
     // Fullscreen tutorial dialog (barre di sistema trasparenti per evitare barre nere)
+    // Usa ViewTreeLifecycleOwner per evitare crash "ViewTreeLifecycleOwner not found" quando
+    // ComposeView è dentro un android.app.Dialog (che non ha LifecycleOwner di default).
     if (showTutorial) {
         val activity = LocalContext.current as? Activity
-        if (activity != null) {
+        val componentActivity = activity as? ComponentActivity
+        if (componentActivity != null) {
             DisposableEffect(Unit) {
-                val dialog = android.app.Dialog(activity, android.R.style.Theme_NoTitleBar_Fullscreen).apply {
-                    requestWindowFeature(Window.FEATURE_NO_TITLE)
-                    setContentView(ComposeView(activity).apply {
-                        setContent {
-                            LABAFirenzeTheme {
-                                TutorialScreen(
-                                    onDismiss = {
-                                        dismiss()
-                                        showTutorial = false
-                                    },
-                                    profileViewModel = viewModel
-                                )
-                            }
-                        }
-                    })
-                    window?.apply {
-                        statusBarColor = android.graphics.Color.TRANSPARENT
-                        navigationBarColor = android.graphics.Color.TRANSPARENT
-                        WindowCompat.setDecorFitsSystemWindows(this, false)
-                        WindowCompat.getInsetsController(this, decorView)?.apply {
-                            isAppearanceLightStatusBars = true
-                            isAppearanceLightNavigationBars = true
+                val dialog = android.app.Dialog(componentActivity, android.R.style.Theme_NoTitleBar_Fullscreen)
+                val composeView = ComposeView(componentActivity).apply {
+                    setContent {
+                        LABAFirenzeTheme {
+                            TutorialScreen(
+                                onDismiss = {
+                                    dialog.dismiss()
+                                    showTutorial = false
+                                },
+                                profileViewModel = viewModel
+                            )
                         }
                     }
-                    setOnCancelListener { showTutorial = false }
-                    show()
                 }
+                dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+                dialog.setContentView(composeView)
+                // Imposta LifecycleOwner/ViewModelStoreOwner/SavedStateRegistryOwner sul decor
+                // prima di show() per evitare crash al primo composition.
+                dialog.window?.decorView?.let { decor ->
+                    decor.setViewTreeLifecycleOwner(componentActivity)
+                    decor.setViewTreeViewModelStoreOwner(componentActivity)
+                    decor.setViewTreeSavedStateRegistryOwner(componentActivity)
+                }
+                dialog.window?.apply {
+                    statusBarColor = android.graphics.Color.TRANSPARENT
+                    navigationBarColor = android.graphics.Color.TRANSPARENT
+                    WindowCompat.setDecorFitsSystemWindows(this, false)
+                    WindowCompat.getInsetsController(this, decorView)?.apply {
+                        isAppearanceLightStatusBars = true
+                        isAppearanceLightNavigationBars = true
+                    }
+                }
+                dialog.setOnCancelListener { showTutorial = false }
+                dialog.show()
                 onDispose { dialog.dismiss() }
             }
         }
@@ -1301,9 +1315,8 @@ data class ProfileActionItem(
 ) : ProfileMenuItem()
 
 /**
- * Carica la foto profilo da URL (ImgBB).
- * Usa ProfilePhotoImageCache: prima controlla cache, poi loadAndCache.
- * Se 404 o placeholder (&lt;15KB) → icona Person e onImageNotFound.
+ * Carica la foto profilo da URL (ImgBB) con Coil.
+ * Non cancelliamo l'URL se il caricamento fallisce: resterà per retry.
  */
 @Composable
 private fun ProfilePhotoFromURL(
@@ -1312,72 +1325,34 @@ private fun ProfilePhotoFromURL(
     onImageNotFound: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var loadState by remember(url) { mutableStateOf<ProfilePhotoLoadState>(ProfilePhotoLoadState.Loading) }
-    
-    LaunchedEffect(url) {
-        loadState = withContext(Dispatchers.IO) {
-            // 1. Controlla cache in-memory (evita reload in Profilo)
-            ProfilePhotoImageCache.imageDataFor(url)?.let { cached ->
-                return@withContext ProfilePhotoLoadState.Success(cached)
+    SubcomposeAsyncImage(
+        model = url,
+        contentDescription = "Avatar",
+        modifier = modifier.fillMaxSize(),
+        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+        loading = {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.dp)
             }
-            // 2. Load e salva in cache
-            ProfilePhotoImageCache.loadAndCache(url)?.let { data ->
-                return@withContext ProfilePhotoLoadState.Success(data)
-            }
-            ProfilePhotoLoadState.Invalid
-        }
-        if (loadState == ProfilePhotoLoadState.Invalid) {
-            onImageNotFound()
-        }
-    }
-    
-    Box(modifier = modifier.fillMaxSize()) {
-    when (val s = loadState) {
-        ProfilePhotoLoadState.Loading -> Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.dp)
-        }
-        ProfilePhotoLoadState.Invalid -> Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.primary),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = "Avatar",
-                modifier = Modifier.size(28.dp),
-                tint = MaterialTheme.colorScheme.onPrimary
-            )
-        }
-        is ProfilePhotoLoadState.Success -> {
-            val bitmap = remember(s.data) {
-                android.graphics.BitmapFactory.decodeByteArray(s.data, 0, s.data.size)
-            }
-            bitmap?.let { bmp ->
-                androidx.compose.foundation.Image(
-                    bitmap = bmp.asImageBitmap(),
-                    contentDescription = "Avatar",
-                    modifier = Modifier.fillMaxSize()
-                )
-            } ?: Box(
+        },
+        error = {
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.primary),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Person, contentDescription = "Avatar", modifier = Modifier.size(28.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Avatar",
+                    modifier = Modifier.size(28.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
             }
         }
-    }
-    }
-}
-
-private sealed class ProfilePhotoLoadState {
-    data object Loading : ProfilePhotoLoadState()
-    data object Invalid : ProfilePhotoLoadState()
-    data class Success(val data: ByteArray) : ProfilePhotoLoadState()
+    )
 }
 

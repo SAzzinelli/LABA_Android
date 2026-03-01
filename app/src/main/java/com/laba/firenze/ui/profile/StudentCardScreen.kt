@@ -19,7 +19,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -164,16 +163,11 @@ fun StudentVerificationBadge(
     // Normalized [-1, 1] roughly
     val density = LocalDensity.current
     
-    BoxWithConstraints(
+        BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .height(230.dp) // Card ratio roughly
+            .height(270.dp) // Altezza sufficiente per evitare testo tagliato (CORSO, MULTIMEDIA, ecc.)
             .clip(RoundedCornerShape(24.dp))
-            .shadow(
-                elevation = 12.dp,
-                shape = RoundedCornerShape(24.dp),
-                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-            )
     ) {
         // Usa maxWidth e maxHeight dallo scope di BoxWithConstraints
         val width = with(density) { this@BoxWithConstraints.maxWidth.toPx() }
@@ -240,17 +234,11 @@ fun StudentVerificationBadge(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-                // Logo LABA a sinistra (65x65 come iOS)
+                // Logo LABA: solo il logo senza sfondo (bianco per badge blu)
                 Image(
-                    painter = painterResource(id = R.drawable.logo_laba_new),
+                    painter = painterResource(id = R.drawable.bianco),
                     contentDescription = "LABA Logo",
-                    modifier = Modifier
-                        .size(65.dp)
-                        .shadow(
-                            elevation = 3.dp,
-                            shape = androidx.compose.foundation.shape.CircleShape,
-                            spotColor = Color.Black.copy(alpha = 0.3f)
-                        ),
+                    modifier = Modifier.size(52.dp),
                     contentScale = ContentScale.Fit
                 )
                 
@@ -261,13 +249,7 @@ fun StudentVerificationBadge(
                     Icons.Default.CheckCircle,
                     contentDescription = "Verified",
                     tint = Color.White,
-                    modifier = Modifier
-                        .size(32.dp)
-                        .shadow(
-                            elevation = 3.dp,
-                            shape = androidx.compose.foundation.shape.CircleShape,
-                            spotColor = Color.Black.copy(alpha = 0.3f)
-                        )
+                    modifier = Modifier.size(32.dp)
                 )
             }
             
@@ -276,8 +258,8 @@ fun StudentVerificationBadge(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
-                    .padding(bottom = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    .padding(bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 // Nome completo (nome + cognome)
                 Column {
