@@ -104,6 +104,7 @@ fun LABANavigation(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
             NavigationBar(
+                modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
                 tonalElevation = 0.dp,
                 containerColor = MaterialTheme.colorScheme.surface
             ) {
