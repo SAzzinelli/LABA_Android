@@ -2,6 +2,7 @@ package com.laba.firenze.ui
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
@@ -103,11 +104,18 @@ fun LABANavigation(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
-            NavigationBar(
-                modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
-                tonalElevation = 0.dp,
-                containerColor = MaterialTheme.colorScheme.surface
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)
+                    .windowInsetsPadding(WindowInsets.navigationBars)
             ) {
+                NavigationBar(
+                    modifier = Modifier.fillMaxWidth(),
+                    tonalElevation = 0.dp,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    windowInsets = WindowInsets(0, 0, 0, 0)
+                ) {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
                 
@@ -153,6 +161,7 @@ fun LABANavigation(
                         }
                     )
                 }
+            }
             }
         }
     ) { paddingValues ->
