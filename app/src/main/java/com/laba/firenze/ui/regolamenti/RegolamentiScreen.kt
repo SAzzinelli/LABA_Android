@@ -159,6 +159,7 @@ fun RegolamentiScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { Text("Regolamenti") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {

@@ -45,6 +45,7 @@ fun StrumentazioneScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { Text(if (isAuthenticated) "Service LABA" else "Accesso Service LABA") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {

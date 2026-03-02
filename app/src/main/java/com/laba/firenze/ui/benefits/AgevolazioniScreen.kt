@@ -62,6 +62,7 @@ fun AgevolazioniScreen(navController: androidx.navigation.NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { Text("Agevolazioni") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {

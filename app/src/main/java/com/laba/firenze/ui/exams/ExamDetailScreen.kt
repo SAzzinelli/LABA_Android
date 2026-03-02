@@ -75,6 +75,7 @@ fun ExamDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { Text("Dettagli esame") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {

@@ -93,6 +93,7 @@ fun AchievementsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { Text("Traguardi") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {

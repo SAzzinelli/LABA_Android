@@ -37,6 +37,7 @@ fun AppearanceSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { Text("Aspetto") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {

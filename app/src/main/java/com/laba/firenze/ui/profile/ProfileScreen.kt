@@ -279,6 +279,7 @@ fun ProfileScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { Text("Profilo") },
                 actions = {
                     IconButton(onClick = { navController.navigate("inbox") }) {

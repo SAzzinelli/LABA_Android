@@ -120,6 +120,7 @@ fun ExamsScreen(
     ) {
         // Header con ricerca e filtri di status in alto a destra
         TopAppBar(
+            windowInsets = WindowInsets(0, 0, 0, 0),
             title = { Text("Esami") },
             actions = {
                 Box {

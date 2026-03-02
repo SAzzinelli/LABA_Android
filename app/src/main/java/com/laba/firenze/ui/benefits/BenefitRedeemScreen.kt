@@ -77,6 +77,7 @@ fun BenefitRedeemScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { Text("Agevolazione") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {

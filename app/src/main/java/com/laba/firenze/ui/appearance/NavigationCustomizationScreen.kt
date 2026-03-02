@@ -34,6 +34,7 @@ fun NavigationCustomizationScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { Text("Personalizza Menu") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {

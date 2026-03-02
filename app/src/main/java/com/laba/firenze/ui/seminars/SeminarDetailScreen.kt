@@ -34,6 +34,7 @@ fun SeminarDetailScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
+                    windowInsets = WindowInsets(0, 0, 0, 0),
                     title = { Text("Seminario non trovato") },
                     navigationIcon = {
                         IconButton(onClick = { navController.popBackStack() }) {
@@ -61,6 +62,7 @@ fun SeminarDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { Text("Dettagli seminario") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {

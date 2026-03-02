@@ -72,6 +72,7 @@ fun ServiziScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { Text("Funzionalità e Servizi") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {

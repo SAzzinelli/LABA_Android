@@ -77,6 +77,7 @@ fun StudentCardScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { Text("Tessera Studente") },
                 navigationIcon = {
                     if (navController != null) {
