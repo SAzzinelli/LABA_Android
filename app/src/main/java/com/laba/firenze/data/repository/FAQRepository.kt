@@ -22,7 +22,7 @@ class FAQRepository @Inject constructor(
 ) {
     companion object {
         private const val TAG = "FAQRepository"
-        private const val BASE_URL = "https://SAzzinelli.github.io/LABA_Orari/faq/faq.json"
+        private const val BASE_URL = "https://laba-firenze.github.io/LABA_Orari/faq/faq.json"
         private const val CACHE_KEY = "laba.faq.cache"
         private const val CACHE_TIMESTAMP_KEY = "laba.faq.cache.timestamp"
         private const val CACHE_VALIDITY_INTERVAL = 3600000L // 1 ora in millisecondi

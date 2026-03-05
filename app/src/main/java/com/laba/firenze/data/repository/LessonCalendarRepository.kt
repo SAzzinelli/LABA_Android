@@ -67,8 +67,8 @@ class LessonCalendarRepository @Inject constructor(
         val year = currentYear ?: 1 
         val semester = currentSemester()
         
-        // Construct URL: https://SAzzinelli.github.io/LABA_Orari/orari/{CORSO}/{ANNO}/{SEMESTRE}sem.json
-        val urlString = "https://SAzzinelli.github.io/LABA_Orari/orari/$courseCode/$year/${semester}sem.json"
+        // Construct URL: https://laba-firenze.github.io/LABA_Orari/orari/{CORSO}/{ANNO}/{SEMESTRE}sem.json
+        val urlString = "https://laba-firenze.github.io/LABA_Orari/orari/$courseCode/$year/${semester}sem.json"
         
         Log.d(TAG, "Attempting GitHub sync: $urlString")
         
