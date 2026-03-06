@@ -76,11 +76,11 @@ object NetworkModule {
         val prefs = context.getSharedPreferences("laba_preferences", android.content.Context.MODE_PRIVATE)
         val version = prefs.getString("laba.apiVersion", "v2") ?: "v2"
         
-        // Allineato a iOS APIConfig: v2 prod = api/api, v3 test = api-test/api
+        // Allineato a iOS APIConfig: v2 prod = api-prod/api, v3 test = api-test/api
         val baseUrl = if (version == "v3") {
             "https://logosuni.laba.biz/api-test/api/"
         } else {
-            "https://logosuni.laba.biz/api/api/"
+            "https://logosuni.laba.biz/api-prod/api/"
         }
         
         return Retrofit.Builder()

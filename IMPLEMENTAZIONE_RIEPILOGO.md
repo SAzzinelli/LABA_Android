@@ -20,7 +20,7 @@
 - **`ProfileScreen.kt`** – passa `profileViewModel` al tutorial per la pagina foto
 
 ### 3. Migrazione API (già fatta in precedenza)
-- URL prod: `api/api` (allineato a iOS)
+- URL prod: `api-prod/api` (allineato a iOS)
 - URL test: `api-test/api`
 
 ### 4. Profilo: Funzionalità e Servizi – allineamento a iOS

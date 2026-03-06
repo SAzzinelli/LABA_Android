@@ -10,8 +10,8 @@ Documento di riferimento per allineare l'app Android a iOS. **Priorità iniziale
 
 | Piattaforma | v2 (Produzione) | v3 (Test) |
 |-------------|-----------------|-----------|
-| **iOS** | `https://logosuni.laba.biz/api/api` | `https://logosuni.laba.biz/api-test/api` |
-| **Android** | `https://logosuni.laba.biz/api/api/` ✅ (allineato) | `https://logosuni.laba.biz/api-test/api/` |
+| **iOS** | `https://logosuni.laba.biz/api-prod/api` | `https://logosuni.laba.biz/api-test/api` |
+| **Android** | `https://logosuni.laba.biz/api-prod/api/` ✅ (allineato) | `https://logosuni.laba.biz/api-test/api/` |
 
 **IdentityServer:**
 
@@ -22,12 +22,12 @@ Documento di riferimento per allineare l'app Android a iOS. **Priorità iniziale
 
 ### Allineamento completato ✅
 
-- **iOS** e **Android** usano entrambi `api/api` per prod (migrazione completata).
+- **iOS** e **Android** usano entrambi `api-prod/api` per prod (migrazione completata).
 
 ### File modificati (migrazione API) ✅
 
-1. **`NetworkModule.kt`** – URL base API allineato: prod = `api/api`, test = `api-test/api`.
-2. ~~**`LogosUniAPIClient.kt`** – fallback Documents v2~~ ✅ Aggiornato a `api/api`.
+1. **`NetworkModule.kt`** – URL base API allineato: prod = `api-prod/api`, test = `api-test/api`.
+2. ~~**`LogosUniAPIClient.kt`** – fallback Documents v2~~ ✅ Aggiornato a `api-prod/api`.
 3. **`LogosUniApiService.kt`** – endpoint notifiche: v2 usa `Notification/GetNotifications`, v3 `Notifications/GetNotifications` (già presenti entrambi).
 4. **`setFcmToken`** – iOS usa `PUT Students/SetFCMToken`; Android usa `POST setFcmToken`. Verificare quale sia quello corretto sul backend.
 
@@ -102,8 +102,8 @@ Documento di riferimento per allineare l'app Android a iOS. **Priorità iniziale
 ### Fase 1 – Migrazione API ✅ (completata)
 
 1. ~~Creare `ApiConfig`~~ – Android usa già `laba.apiVersion` in SharedPreferences (equivalente).
-2. ✅ URL prod allineato a `api/api`.
-3. ✅ Fallback Documents aggiornato a `api/api`.
+2. ✅ URL prod allineato a `api-prod/api`.
+3. ✅ Fallback Documents aggiornato a `api-prod/api`.
 4. `setFcmToken`: iOS usa `PUT Students/SetFCMToken`, Android `POST setFcmToken` – verificare con backend se serve allineamento.
 5. ✅ Switch v2/v3 in Debug/Dev options attivo.
 

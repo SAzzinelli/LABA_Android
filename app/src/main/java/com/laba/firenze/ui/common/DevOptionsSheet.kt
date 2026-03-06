@@ -47,7 +47,7 @@ fun DevOptionsSheet(
                 Spacer(modifier = Modifier.width(8.dp))
                 Column {
                     Text("v2 (Stable)", fontWeight = FontWeight.Bold)
-                    Text("api/api", style = MaterialTheme.typography.bodySmall)
+                    Text("api-prod/api", style = MaterialTheme.typography.bodySmall)
                 }
             }
             

@@ -318,8 +318,8 @@ class LogosUniAPIClient @Inject constructor(
     
     suspend fun getDocumentById(token: String, allegatoOid: String): ByteArray? {
         return withContext(Dispatchers.IO) {
-            // Base URLs come iOS APIConfig (senza trailing slash per concatenazione)
-            val v2Base = "https://logosuni.laba.biz/api/api"
+            // Base URLs come iOS APIConfig (produzione: api-prod/api)
+            val v2Base = "https://logosuni.laba.biz/api-prod/api"
             val v3Base = "https://logosuni.laba.biz/api-test/api"
             val bases = listOf(v2Base, v3Base)
             var lastError: Exception? = null

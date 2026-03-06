@@ -263,7 +263,7 @@ private fun ApiVersionPickerDialog(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "api/api",
+                            text = "api-prod/api",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
