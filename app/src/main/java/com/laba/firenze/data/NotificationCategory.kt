@@ -11,7 +11,7 @@ enum class NotificationCategory(
     EVENTS("eventi_laba", "Eventi LABA", "notifications.events"),
     SEMINARS("seminari", "Seminari", "notifications.seminars"),
     GRADES("voti", "Voti", "notifications.grades"),
-    MATERIALS("materiali", "Materiali e dispense", "notifications.materials"),
+    MATERIALS("materiali", "Dispense e materiali", "notifications.materials"),
     ABSENCES("assenze", "Assenze docenti", "notifications.absences");
     
     val topicSuffix: String get() = value

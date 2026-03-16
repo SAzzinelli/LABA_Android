@@ -131,4 +131,24 @@ class SupabaseRepository @Inject constructor(
             e.printStackTrace()
         }
     }
+
+    /** Upsert FCM token su user_fcm_tokens (portale notifiche dropdown) - allineato a iOS NotificheTokenService */
+    suspend fun upsertFcmToken(userEmail: String, fcmToken: String, displayName: String?) = withContext(Dispatchers.IO) {
+        try {
+            val email = userEmail.trim().lowercase()
+            if (email.isEmpty() || fcmToken.isEmpty()) return@withContext
+            val body = com.laba.firenze.data.api.UserFcmTokenBody(
+                user_email = email,
+                fcm_token = fcmToken,
+                updated_at = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US).format(java.util.Date()),
+                display_name = displayName?.trim()?.takeIf { it.isNotEmpty() }
+            )
+            val response = api.upsertFcmToken(body, authorization = AUTH_HEADER, apiKey = API_KEY)
+            if (!response.isSuccessful) {
+                android.util.Log.w("SupabaseRepository", "upsertFcmToken failed: ${response.code()}")
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 }

@@ -426,29 +426,17 @@ private fun KpiCard(
 }
 
 /**
- * Determina se lo studente è del biennio basandosi sul pianoStudi e sulla matricola
+ * Determina se lo studente è del biennio: solo 2 anni, nascondere 3° in home/corsi/esami.
+ * Allineato a iOS SessionViewModel.isBiennio (pianoStudi + corsi noti: Interior, Cinema e Audiovisivi).
  */
 private fun isBiennioLevel(profile: com.laba.firenze.domain.model.StudentProfile?): Boolean {
     if (profile == null) return false
-    
-    val pianoStudi = profile.pianoStudi?.lowercase() ?: ""
+    val ps = profile.pianoStudi?.lowercase() ?: ""
     val matricola = profile.matricola?.lowercase() ?: ""
-    
-    // Controlla nel pianoStudi
-    val pianoContainsBiennio = pianoStudi.contains("biennio") || 
-                               pianoStudi.contains("ii livello") || 
-                               pianoStudi.contains("2° livello") || 
-                               pianoStudi.contains("secondo livello")
-    
-    // Controlla nella matricola (se contiene "biennio" e non "triennio", è biennio)
-    val matricolaContainsBiennio = matricola.contains("biennio") && !matricola.contains("triennio")
-    
-    // Se ha solo biennio nella matricola (senza triennio), è biennio
-    val hasOnlyBiennio = matricola.contains("biennio") && !matricola.contains("triennio")
-    
-    val result = pianoContainsBiennio || hasOnlyBiennio
-    android.util.Log.d("HomeScreen", "isBiennioLevel - pianoStudi: '$pianoStudi', matricola: '$matricola', result: $result")
-    return result
+    if (ps.contains("biennio") || ps.contains("ii livello") || ps.contains("2° livello") || ps.contains("secondo livello")) return true
+    if (ps.contains("interior") || ps.contains("cinema") || ps.contains("audiovisiv")) return true
+    if (matricola.contains("biennio") && !matricola.contains("triennio")) return true
+    return false
 }
 
 // MARK: - Year Progress and Average Section

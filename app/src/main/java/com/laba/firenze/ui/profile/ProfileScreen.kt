@@ -212,6 +212,17 @@ private fun hasMultipleMatricole(matricola: String?): Boolean {
     return lower.contains("triennio") && lower.contains("biennio")
 }
 
+/** Biennio: nascondere 3° anno e pill pagamenti; stessa logica di HomeScreen/Exams. */
+private fun isBiennioProfile(profile: com.laba.firenze.domain.model.StudentProfile?): Boolean {
+    if (profile == null) return false
+    val ps = profile.pianoStudi?.lowercase() ?: ""
+    val matricola = profile.matricola?.lowercase() ?: ""
+    if (ps.contains("biennio") || ps.contains("ii livello") || ps.contains("2° livello") || ps.contains("secondo livello")) return true
+    if (ps.contains("interior") || ps.contains("cinema") || ps.contains("audiovisiv")) return true
+    if (matricola.contains("biennio") && !matricola.contains("triennio")) return true
+    return false
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
@@ -395,30 +406,16 @@ fun ProfileScreen(
             }
         }
         
-        // Utilità Section (identica a iOS)
-        item {
-            ProfileSection(
-                title = "Utilità",
-                items = listOf(
-                    ProfileMenuActionItem(
-                        title = "Consulta FAQ",
-                        icon = Icons.AutoMirrored.Filled.Help,
-                        onClick = { navController.navigate("faq") }
-                    ),
-                    ProfileMenuActionItem(
-                        title = "Funzionalità e Servizi",
-                        icon = Icons.Default.Build,
-                        onClick = { navController.navigate("servizi") }
-                    )
-                )
-            )
-        }
-        
-        // Preferences Section (con Apple Watch)
+        // Preferenze Section (ordine come iOS: prima Notifiche e Aspetto)
         item {
             ProfileSection(
                 title = "Preferenze",
                 items = listOf(
+                    ProfileMenuActionItem(
+                        title = "Funzionalità e Servizi",
+                        icon = Icons.Default.Build,
+                        onClick = { navController.navigate("servizi") }
+                    ),
                     ProfileMenuActionItem(
                         title = "Notifiche",
                         icon = Icons.Default.Notifications,
@@ -436,6 +433,20 @@ fun ProfileScreen(
                                 launchSingleTop = true
                             }
                         }
+                    )
+                )
+            )
+        }
+        
+        // Utilità Section (FAQ dopo Preferenze, come iOS)
+        item {
+            ProfileSection(
+                title = "Utilità",
+                items = listOf(
+                    ProfileMenuActionItem(
+                        title = "Consulta FAQ",
+                        icon = Icons.AutoMirrored.Filled.Help,
+                        onClick = { navController.navigate("faq") }
                     )
                 )
             )
@@ -899,92 +910,96 @@ private fun ProfileHeader(
                 }
             }
             
-            // Pillole sotto il nome (stessa riga)
+            // Pillole sotto il nome: triennio = "Matricola: xxx" unica; doppia = Triennio:/Biennio: (no pill Pagamenti se biennio)
+            val (triennioMatricola, biennioMatricola) = parseMatricole(userProfile?.matricola)
+            val hasMultiple = hasMultipleMatricole(userProfile?.matricola)
+            val isBiennio = isBiennioProfile(userProfile)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Pillola stato pagamenti
-                val pagamentiInRegola = userProfile?.pagamenti?.uppercase() == "OK"
-                Surface(
-                    color = if (pagamentiInRegola) {
-                        Color(0xFF4CAF50) // Verde
-                    } else {
-                        Color(0xFFF44336) // Rosso
-                    },
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            if (pagamentiInRegola) Icons.Filled.Check else Icons.Filled.Warning,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = Color.White
-                        )
-                        Text(
-                            text = if (pagamentiInRegola) "Pagamenti in regola" else "Pagamenti non in regola",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-                
-                // Pillola numero matricola (stessa larghezza di Traguardi, nella stessa riga)
-                val (triennioMatricola, biennioMatricola) = parseMatricole(userProfile?.matricola)
-                val hasMultiple = hasMultipleMatricole(userProfile?.matricola)
-                
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable(enabled = hasMultiple) {
-                            if (hasMultiple) {
-                                onMatricoleClick()
-                            }
-                        }
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                // Pillola pagamenti: solo per triennio (biennio non la mostriamo)
+                if (!isBiennio) {
+                    val pagamentiInRegola = userProfile?.pagamenti?.uppercase() == "OK"
+                    Surface(
+                        color = if (pagamentiInRegola) Color(0xFF4CAF50) else Color(0xFFF44336),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
                         Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                                Icons.Filled.Tag,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                                text = if (hasMultiple) {
-                                    "Matricole"
-                                } else {
-                                    "Matricola: ${biennioMatricola ?: triennioMatricola ?: "N/A"}"
-                                },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                        if (hasMultiple) {
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Icon(
-                                Icons.AutoMirrored.Filled.ArrowForward,
+                                if (pagamentiInRegola) Icons.Filled.Check else Icons.Filled.Warning,
                                 contentDescription = null,
-                                modifier = Modifier.size(12.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                modifier = Modifier.size(14.dp),
+                                tint = Color.White
                             )
+                            Text(
+                                text = if (pagamentiInRegola) "Pagamenti in regola" else "Pagamenti non in regola",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+                // Matricola: una pill "Matricola: xxx" se triennio/singola; due pill "Triennio: xxx" e "Biennio: xxx" se doppia
+                if (hasMultiple) {
+                    if (triennioMatricola != null) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.weight(1f).clickable { onMatricoleClick() }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Filled.Tag, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("Triennio: $triennioMatricola", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                            }
+                        }
+                    }
+                    if (biennioMatricola != null) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.weight(1f).clickable { onMatricoleClick() }
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Filled.Tag, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("Biennio: $biennioMatricola", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                                }
+                                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                } else {
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Filled.Tag, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Matricola: ${biennioMatricola ?: triennioMatricola ?: "N/A"}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
                         }
                     }
                 }

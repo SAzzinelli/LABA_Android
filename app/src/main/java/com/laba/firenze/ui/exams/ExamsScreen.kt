@@ -448,27 +448,16 @@ private fun getStatusTitle(filter: StatusFilter): String {
 
 
 /**
- * Determina se lo studente è del biennio basandosi sul pianoStudi e sulla matricola
- * (stessa logica di HomeScreen.isBiennioLevel)
+ * Biennio: solo anni 1–2; triennio: 1–3. Stessa logica di HomeScreen (iOS SessionViewModel.isBiennio).
  */
 private fun isBiennioLevel(profile: com.laba.firenze.domain.model.StudentProfile?): Boolean {
     if (profile == null) return false
-    
-    val pianoStudi = profile.pianoStudi?.lowercase() ?: ""
+    val ps = profile.pianoStudi?.lowercase() ?: ""
     val matricola = profile.matricola?.lowercase() ?: ""
-    
-    // Controlla nel pianoStudi
-    val pianoContainsBiennio = pianoStudi.contains("biennio") || 
-                               pianoStudi.contains("ii livello") || 
-                               pianoStudi.contains("2° livello") || 
-                               pianoStudi.contains("secondo livello")
-    
-    // Controlla nella matricola (se contiene "biennio" e non "triennio", è biennio)
-    val hasOnlyBiennio = matricola.contains("biennio") && !matricola.contains("triennio")
-    
-    val result = pianoContainsBiennio || hasOnlyBiennio
-    android.util.Log.d("ExamsScreen", "isBiennioLevel - pianoStudi: '$pianoStudi', matricola: '$matricola', result: $result")
-    return result
+    if (ps.contains("biennio") || ps.contains("ii livello") || ps.contains("2° livello") || ps.contains("secondo livello")) return true
+    if (ps.contains("interior") || ps.contains("cinema") || ps.contains("audiovisiv")) return true
+    if (matricola.contains("biennio") && !matricola.contains("triennio")) return true
+    return false
 }
 
 private fun getGradeColor(grade: String?): Color {

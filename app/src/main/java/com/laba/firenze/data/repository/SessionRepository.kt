@@ -743,17 +743,27 @@ class SessionRepository @Inject constructor(
     }
     
     /**
-     * Invia il token FCM al server (solo per v3)
+     * Invia il token FCM al server (solo per v3) e upsert su Supabase user_fcm_tokens con display_name (portale notifiche).
+     * Allineato a iOS NotificheTokenService.
      */
     private suspend fun sendFcmTokenToServer(accessToken: String) {
         try {
             val fcmToken = notificationManager.getToken()
             if (fcmToken != null) {
-                val success = apiClient.setFcmToken(accessToken, fcmToken)
-                if (success) {
-                    Log.d("SessionRepository", "✅ FCM token inviato con successo al server")
-                } else {
-                    Log.w("SessionRepository", "⚠️ Fallito invio FCM token al server")
+                if (isApiV3()) {
+                    val success = apiClient.setFcmToken(accessToken, fcmToken)
+                    if (success) {
+                        Log.d("SessionRepository", "✅ FCM token inviato con successo al server")
+                    } else {
+                        Log.w("SessionRepository", "⚠️ Fallito invio FCM token al server")
+                    }
+                }
+                // Supabase: per dropdown destinatari nel portale notifiche (come iOS)
+                val profile = tokenManager.userProfile.value
+                val email = profile?.emailLABA ?: profile?.emailPersonale ?: ""
+                if (email.isNotEmpty()) {
+                    supabaseRepository.upsertFcmToken(email, fcmToken, profile?.displayName)
+                    Log.d("SessionRepository", "✅ FCM token upsert su Supabase (display_name per portale)")
                 }
             } else {
                 Log.w("SessionRepository", "⚠️ FCM token non disponibile")
@@ -763,5 +773,4 @@ class SessionRepository @Inject constructor(
             // Non bloccare il login se fallisce l'invio del token
         }
     }
-    
 }

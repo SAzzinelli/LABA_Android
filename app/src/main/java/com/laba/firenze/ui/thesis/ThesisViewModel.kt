@@ -72,11 +72,13 @@ class ThesisViewModel @Inject constructor(
     }
 
     private fun isBiennioLevel(profile: StudentProfile?): Boolean {
-        val pianoStudi = profile?.pianoStudi?.lowercase() ?: ""
-        return pianoStudi.contains("biennio") || 
-               pianoStudi.contains("ii livello") || 
-               pianoStudi.contains("2° livello") || 
-               pianoStudi.contains("secondo livello")
+        if (profile == null) return false
+        val ps = profile.pianoStudi?.lowercase() ?: ""
+        val matricola = profile.matricola?.lowercase() ?: ""
+        if (ps.contains("biennio") || ps.contains("ii livello") || ps.contains("2° livello") || ps.contains("secondo livello")) return true
+        if (ps.contains("interior") || ps.contains("cinema") || ps.contains("audiovisiv")) return true
+        if (matricola.contains("biennio") && !matricola.contains("triennio")) return true
+        return false
     }
 
     /**

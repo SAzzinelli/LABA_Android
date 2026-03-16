@@ -57,7 +57,23 @@ interface SupabaseApi {
         @Header("Authorization") authorization: String,
         @Header("apikey") apiKey: String
     ): Response<Void>
+
+    /** Upsert FCM token per portale notifiche (dropdown destinatari) - allineato a iOS NotificheTokenService */
+    @POST("rest/v1/user_fcm_tokens")
+    @Headers("Prefer: return=minimal, resolution=merge-duplicates")
+    suspend fun upsertFcmToken(
+        @Body body: UserFcmTokenBody,
+        @Header("Authorization") authorization: String,
+        @Header("apikey") apiKey: String
+    ): Response<Void>
 }
+
+data class UserFcmTokenBody(
+    val user_email: String,
+    val fcm_token: String,
+    val updated_at: String,
+    val display_name: String? = null
+)
 
 data class ProfilePhotoSaveBody(
     val user_email: String,

@@ -84,6 +84,17 @@ class SessionTokenManager @Inject constructor(
         return email
     }
 
+    /** Email utente corrente (per FCM upsert Supabase in background, es. onNewToken). */
+    fun getStoredUserEmail(): String? {
+        return sharedPreferences.getString("user_email_laba", null)
+            ?: sharedPreferences.getString("user_email_personale", null)
+    }
+
+    /** Nome/cognome per portale notifiche (dropdown destinatari). */
+    fun getStoredUserDisplayName(): String? {
+        return sharedPreferences.getString("user_display_name", null)?.takeIf { it.isNotBlank() }
+    }
+
     fun getProfilePhotoURL(): String? =
         sharedPreferences.getString("profile_photo_url_${userKey()}", null)
 

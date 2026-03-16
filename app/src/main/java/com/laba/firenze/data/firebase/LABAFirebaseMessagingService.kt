@@ -9,7 +9,9 @@ import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.laba.firenze.data.api.LogosUniAPIClient
+import com.laba.firenze.data.local.SessionTokenManager
 import com.laba.firenze.data.local.TokenStore
+import com.laba.firenze.data.repository.SupabaseRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +32,12 @@ class LABAFirebaseMessagingService : FirebaseMessagingService() {
     
     @Inject
     lateinit var tokenStore: TokenStore
+    
+    @Inject
+    lateinit var supabaseRepository: SupabaseRepository
+    
+    @Inject
+    lateinit var sessionTokenManager: SessionTokenManager
     
     private val serviceScope = CoroutineScope(Dispatchers.IO)
     
@@ -65,7 +73,7 @@ class LABAFirebaseMessagingService : FirebaseMessagingService() {
         super.onNewToken(token)
         Log.d(TAG, "New FCM token: $token")
         
-        // Invia il token al server se siamo in v3 e l'utente è loggato
+        // Invia il token al server (v3) e upsert su Supabase con display_name (portale notifiche) - allineato a iOS
         serviceScope.launch {
             try {
                 val prefs = getSharedPreferences("laba_preferences", Context.MODE_PRIVATE)
@@ -83,6 +91,12 @@ class LABAFirebaseMessagingService : FirebaseMessagingService() {
                     } else {
                         Log.d(TAG, "ℹ️ Utente non loggato, token FCM verrà inviato al prossimo login")
                     }
+                }
+                // Supabase: dropdown destinatari nel portale notifiche (come iOS NotificheTokenService)
+                val email = sessionTokenManager.getStoredUserEmail()
+                if (!email.isNullOrEmpty()) {
+                    supabaseRepository.upsertFcmToken(email, token, sessionTokenManager.getStoredUserDisplayName())
+                    Log.d(TAG, "✅ FCM token upsert su Supabase (display_name per portale)")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Errore invio FCM token: ${e.message}", e)
