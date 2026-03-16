@@ -11,13 +11,13 @@ plugins {
 
 android {
     namespace = "com.laba.firenze"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.laba.firenze"
         minSdk = 24
-        targetSdk = 34
-        versionCode = 1
+        targetSdk = 35
+        versionCode = 2
         versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
