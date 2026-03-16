@@ -123,6 +123,13 @@ class TopicManager @Inject constructor(
     ) {
         scope.launch {
             try {
+                // Log preferenze categorie (per Firebase / indirizzamento notifiche)
+                val globalOn = isNotificationsEnabled()
+                val prefs = NotificationCategory.values().joinToString(", ") { cat ->
+                    "${cat.value}=${if (isCategoryEnabled(cat)) "on" else "off"}"
+                }
+                Log.d(TAG, "🔔 Preferenze notifiche: global=$globalOn, $prefs")
+                
                 // Get old subscribed topics
                 val oldSubscribedTopics = getSubscribedTopics().toMutableSet()
                 
@@ -161,7 +168,8 @@ class TopicManager @Inject constructor(
                 
                 // Subscribe to new topics
                 notificationManager.subscribeToTopics(newSubscribedTopics)
-                Log.d(TAG, "Subscribed to topics: $newSubscribedTopics")
+                Log.d(TAG, "🔔 Topic FCM (per targeting backend/Firebase): $newSubscribedTopics")
+                Log.d(TAG, "Subscribed to ${newSubscribedTopics.size} topics")
                 
                 // Save the new subscribed topics
                 saveSubscribedTopics(newSubscribedTopics)

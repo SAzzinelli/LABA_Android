@@ -41,6 +41,7 @@ class MainActivity : ComponentActivity() {
         window.navigationBarColor = Color.Transparent.toArgb()
         
         handleDeepLink(intent)
+        handleNotificationTap(intent)
         
         setContent {
             LABAAuthWrapper(viewModel = mainViewModel)
@@ -51,6 +52,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleDeepLink(intent)
+        handleNotificationTap(intent)
     }
     
     /** Deep link laba://lesson/{lessonId} (identico a iOS handleDeepLink). */
@@ -59,6 +61,14 @@ class MainActivity : ComponentActivity() {
         if (data.scheme != "laba" || data.host != "lesson") return
         val lessonId = data.pathSegments.getOrNull(0) ?: return
         mainViewModel.setPendingDeepLink(lessonId)
+    }
+    
+    /** Tap su notifica FCM: apri app e vai al dettaglio della notifica. */
+    private fun handleNotificationTap(intent: android.content.Intent?) {
+        if (intent?.getBooleanExtra("notification_tap", false) != true) return
+        val title = intent.getStringExtra("notification_title") ?: "LABA"
+        val body = intent.getStringExtra("notification_body") ?: ""
+        mainViewModel.setPendingNotificationTap(title, body)
     }
 }
 

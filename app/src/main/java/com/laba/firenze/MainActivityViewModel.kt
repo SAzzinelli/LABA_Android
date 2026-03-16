@@ -35,6 +35,19 @@ class MainActivityViewModel @Inject constructor(
         _pendingDeepLink.value = null
     }
     
+    /** Tap su notifica FCM → apri dettaglio singola notifica (title/body dall'intent). */
+    data class NotificationTapPayload(val title: String, val body: String)
+    private val _pendingNotificationTap = MutableStateFlow<NotificationTapPayload?>(null)
+    val pendingNotificationTap: StateFlow<NotificationTapPayload?> = _pendingNotificationTap.asStateFlow()
+    
+    fun setPendingNotificationTap(title: String, body: String) {
+        _pendingNotificationTap.value = NotificationTapPayload(title = title, body = body)
+    }
+    
+    fun clearPendingNotificationTap() {
+        _pendingNotificationTap.value = null
+    }
+    
     init {
         // Monitor login state (mantieni isLoading attivo se i dati stanno caricando)
         viewModelScope.launch {

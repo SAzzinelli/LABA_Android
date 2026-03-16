@@ -81,6 +81,7 @@ fun LABANavigation(
     val navController = rememberNavController()
     val activeTabs by navigationViewModel.activeTabs.collectAsStateWithLifecycle()
     val pendingLessonId by mainViewModel.pendingDeepLink.collectAsStateWithLifecycle()
+    val pendingNotificationTap by mainViewModel.pendingNotificationTap.collectAsStateWithLifecycle()
     
     // Deep link laba://lesson/{lessonId} (identico a iOS)
     LaunchedEffect(pendingLessonId) {
@@ -90,6 +91,16 @@ fun LABANavigation(
                 launchSingleTop = true
             }
             mainViewModel.clearPendingDeepLink()
+        }
+    }
+    
+    // Tap su notifica FCM → apri dettaglio singola notifica
+    LaunchedEffect(pendingNotificationTap) {
+        pendingNotificationTap?.let {
+            navController.navigate("notification_tap_detail") {
+                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+            }
         }
     }
     
@@ -303,6 +314,11 @@ fun LABANavigation(
             // Inbox Notifications
             composable("inbox") {
                 InboxNotificationsScreen(navController)
+            }
+            
+            // Dettaglio notifica aperta dal tap sulla push (FCM)
+            composable("notification_tap_detail") {
+                com.laba.firenze.ui.notifications.NotificationTapDetailScreen(navController, mainViewModel)
             }
             
             // Appearance Settings

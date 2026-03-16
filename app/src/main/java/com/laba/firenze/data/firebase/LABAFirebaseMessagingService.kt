@@ -2,11 +2,14 @@ package com.laba.firenze.data.firebase
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
+import com.laba.firenze.MainActivity
 import com.google.firebase.messaging.RemoteMessage
 import com.laba.firenze.data.api.LogosUniAPIClient
 import com.laba.firenze.data.local.SessionTokenManager
@@ -107,12 +110,27 @@ class LABAFirebaseMessagingService : FirebaseMessagingService() {
     private fun showNotification(title: String, body: String, data: Map<String, String>) {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("notification_tap", true)
+            putExtra("notification_title", title)
+            putExtra("notification_body", body)
+        }
+        val requestCode = (title + body).hashCode() and 0x7FFFFFFF
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info) // TODO: Use custom icon
             .setContentTitle(title)
             .setContentText(body)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
         
         notificationManager.notify(System.currentTimeMillis().toInt(), builder.build())
     }
