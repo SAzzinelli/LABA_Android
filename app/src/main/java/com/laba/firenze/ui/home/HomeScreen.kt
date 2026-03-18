@@ -129,6 +129,14 @@ fun HomeScreen(
                         item {
                             LessonsTodayCard(lessons = uiState.lessonsToday)
                         }
+                        item {
+                            TextButton(
+                                onClick = { navController.navigate("full_timetable") },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Visualizza orario completo")
+                            }
+                        }
                     }
                 }
                 "quickActions" -> {

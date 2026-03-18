@@ -4,11 +4,18 @@ import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.laba.firenze.data.repository.SessionRepository
+import com.laba.firenze.domain.model.Esame
 import com.laba.firenze.domain.model.Seminario
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+/** Tab della sezione Attività a scelta (come iOS AttivitaSceltaTab). */
+enum class AttivitaSceltaTab {
+    SEMINARI,
+    ATTIVITA_INTEGRATIVE
+}
 
 @HiltViewModel
 class SeminarsViewModel @Inject constructor(
@@ -21,6 +28,21 @@ class SeminarsViewModel @Inject constructor(
     
     init {
         loadSeminars()
+        loadThesisExams()
+    }
+    
+    private fun loadThesisExams() {
+        viewModelScope.launch {
+            sessionRepository.allExams.collect { exams ->
+                val thesis = exams.filter { it.corso.uppercase().contains("TESI FINALE") }
+                val state = _uiState.value
+                val queryAltro = state.searchQueryAttivitaIntegrative
+                _uiState.value = state.copy(
+                    thesisExams = thesis,
+                    filteredThesisExams = filterThesisByQuery(thesis, queryAltro)
+                )
+            }
+        }
     }
     
     fun trackSectionVisit(section: String) {
@@ -38,6 +60,24 @@ class SeminarsViewModel @Inject constructor(
                 )
             }
         }
+    }
+    
+    private fun filterThesisByQuery(thesis: List<Esame>, query: String): List<Esame> {
+        if (query.isBlank()) return thesis
+        val q = query.lowercase()
+        return thesis.filter { prettifyTitle(it.corso).lowercase().contains(q) }
+    }
+    
+    fun setSelectedTab(tab: AttivitaSceltaTab) {
+        _uiState.value = _uiState.value.copy(selectedTab = tab)
+    }
+    
+    fun updateSearchQueryAttivitaIntegrative(query: String) {
+        val state = _uiState.value
+        _uiState.value = state.copy(
+            searchQueryAttivitaIntegrative = query,
+            filteredThesisExams = filterThesisByQuery(state.thesisExams, query)
+        )
     }
     
     fun updateSearchQuery(query: String) {
@@ -63,7 +103,7 @@ class SeminarsViewModel @Inject constructor(
     ): List<Seminario> {
         val base = when (filter) {
             SeminariFilter.TUTTI -> seminars
-            SeminariFilter.DISPONIBILI -> seminars.filter { !it.partecipato }
+            SeminariFilter.PRENOTABILI -> seminars.filter { it.richiedibile }
             SeminariFilter.FREQUENTATI -> seminars.filter { it.partecipato }
         }
         return if (searchQuery.isBlank()) base else {
@@ -116,19 +156,39 @@ class SeminarsViewModel @Inject constructor(
     fun getSeminarById(seminarId: String): Seminario? {
         return _uiState.value.allSeminars.find { it.oid == seminarId }
     }
+    
+    /** CFA senza zero iniziale (08 → 8) per UX, come iOS. */
+    fun formatCFA(raw: String?): String? {
+        val s = raw?.trim() ?: return null
+        if (s.isEmpty()) return null
+        return s.toIntOrNull()?.toString() ?: s
+    }
+    
+    /** True se tesi superata (voto valorizzato, data sostenuto, o idoneo). */
+    fun isTesiSuperata(e: Esame): Boolean {
+        val v = (e.voto ?: "").trim()
+        if (v.isNotEmpty()) return true
+        if (e.data != null) return true
+        val low = v.lowercase()
+        return low.contains("idoneo") || low.contains("idonea") || low.contains("idoneità")
+    }
 }
 
 enum class SeminariFilter(val label: String) {
     TUTTI("Tutti"),
-    DISPONIBILI("Disponibili"),
+    PRENOTABILI("Prenotabili"),
     FREQUENTATI("Frequentati")
 }
 
 data class SeminarsUiState(
+    val selectedTab: AttivitaSceltaTab = AttivitaSceltaTab.SEMINARI,
     val allSeminars: List<Seminario> = emptyList(),
     val seminars: List<Seminario> = emptyList(),
     val searchQuery: String = "",
+    val searchQueryAttivitaIntegrative: String = "",
     val filter: SeminariFilter = SeminariFilter.TUTTI,
+    val thesisExams: List<Esame> = emptyList(),
+    val filteredThesisExams: List<Esame> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null
 )

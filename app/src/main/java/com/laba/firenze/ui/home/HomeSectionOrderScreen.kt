@@ -39,7 +39,7 @@ fun HomeSectionOrderScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Ordine sezioni Home") },
+                title = { Text("Ordine sezioni Bacheca") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Indietro")

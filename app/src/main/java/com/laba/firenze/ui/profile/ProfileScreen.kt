@@ -373,6 +373,25 @@ fun ProfileScreen(
             )
         }
         
+        // Attività Section (come iOS: Sessione studio, Registratore lezioni – senza minigiochi)
+        item {
+            ProfileSection(
+                title = "Attività",
+                items = listOf(
+                    ProfileMenuActionItem(
+                        title = "Sessione studio",
+                        icon = Icons.Default.School,
+                        onClick = { navController.navigate("sessione_studio") }
+                    ),
+                    ProfileMenuActionItem(
+                        title = "Registratore lezioni",
+                        icon = Icons.Default.Mic,
+                        onClick = { navController.navigate("registratore_lezioni") }
+                    )
+                )
+            )
+        }
+        
         // Risorse Section (con Regolamenti e descrizione footer)
         item {
             Column(
@@ -910,7 +929,9 @@ private fun ProfileHeader(
                 }
             }
             
-            // Pillole sotto il nome: triennio = "Matricola: xxx" unica; doppia = Triennio:/Biennio: (no pill Pagamenti se biennio)
+            // Pillole sotto il nome (allineate a iOS):
+            // - Pagamenti: solo per triennio (isBiennio = false). Per biennio/corso II livello non si mostra.
+            // - Matricola: una pill "Matricola: xxx" se una sola; due pill "Triennio: xxx" e "Biennio: xxx" se doppia. Tutte cliccabili → dialog Matricole.
             val (triennioMatricola, biennioMatricola) = parseMatricole(userProfile?.matricola)
             val hasMultiple = hasMultipleMatricole(userProfile?.matricola)
             val isBiennio = isBiennioProfile(userProfile)
@@ -991,7 +1012,7 @@ private fun ProfileHeader(
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).clickable { onMatricoleClick() }
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),

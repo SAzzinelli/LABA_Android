@@ -2,6 +2,32 @@ package com.laba.firenze.ui.seminars
 
 import android.text.Html
 import androidx.core.text.HtmlCompat
+import com.laba.firenze.domain.model.Seminario
+
+// MARK: - Logica stati seminario (clonata da iOS SeminarHelpers)
+// partecipato=Y → convalidato; partecipato=N + esitoRichiesta valorizzato (non "in attesa") → non convalidato;
+// partecipato=N + dataRichiesta set + richiedibile=Y → prenotato in attesa; partecipato=N + entrambi null → prenotabile se richiedibile.
+
+/** Non convalidato: partecipato=N e esito "negativo" (non in attesa) oppure prenotato ma periodo chiuso (dataRichiesta set + richiedibile=N). */
+fun isSeminarioNonConvalidato(seminario: Seminario): Boolean {
+    if (seminario.partecipato) return false
+    val e = seminario.esito?.trim()?.lowercase() ?: ""
+    val inAttesa = e.isEmpty() || listOf(
+        "richiesta ricevuta", "prenotato", "prenotazione", "in attesa", "ricevuta"
+    ).any { e.contains(it) }
+    if (!inAttesa) return true
+    return seminario.dataRichiesta != null && !seminario.richiedibile
+}
+
+/** Non richiesto: partecipato=N, dataRichiesta null, richiedibile=N — periodo prenotazione superato. */
+fun isSeminarioNonRichiesto(seminario: Seminario): Boolean {
+    return !seminario.partecipato && seminario.dataRichiesta == null && !seminario.richiedibile
+}
+
+/** Prenotato in attesa: dataRichiesta valorizzata e richiedibile=Y. */
+fun isSeminarioPrenotatoInAttesa(seminario: Seminario): Boolean {
+    return seminario.dataRichiesta != null && seminario.richiedibile
+}
 
 data class SeminarDetails(
     val docente: String? = null,
@@ -196,7 +222,7 @@ private fun extractGroups(lines: List<String>): List<SeminarGroup> {
     for (line in lines) {
         val lower = line.lowercase()
         if (lower.contains("gruppo")) {
-            val timeRegex = Regex("\\b\\d{1,2}[:.:]\\d{2}\\b(\\s?[–\\u2013\\u2014-]\\s?\\d{1,2}[:.:]\\d{2}\\b)?")
+            val timeRegex = Regex("\\b\\d{1,2}[.:]\\d{2}\\b(\\s?[–\\u2013\\u2014-]\\s?\\d{1,2}[.:]\\d{2}\\b)?")
             val time = timeRegex.find(line)?.value ?: ""
             
             val groupRegex = Regex("(?i)gruppo\\s*([A-Za-z0-9]+)")

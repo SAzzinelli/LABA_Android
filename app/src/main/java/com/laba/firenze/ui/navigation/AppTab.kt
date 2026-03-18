@@ -13,10 +13,10 @@ enum class AppTab(
     val icon: ImageVector, 
     val isLocked: Boolean = false
 ) {
-    HOME("home", "Home", Icons.Default.Home, true),
+    HOME("home", "Bacheca", Icons.Default.Dashboard, true),
     COURSES("courses", "Corsi", Icons.Default.School), // LABANavigation.Courses
     EXAMS("exams", "Esami", Icons.AutoMirrored.Filled.Assignment), // LABANavigation.Exams
-    SEMINARS("seminars", "Seminari", Icons.Default.Event), // LABANavigation.Seminars
+    SEMINARS("seminars", "Attività", Icons.Default.Event), // LABANavigation.Seminars
     PROFILE("profile", "Profilo", Icons.Default.Person, true),
     
     // Optional / Hidden by default usually

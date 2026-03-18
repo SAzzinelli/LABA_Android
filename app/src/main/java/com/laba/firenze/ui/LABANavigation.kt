@@ -57,16 +57,19 @@ import com.laba.firenze.ui.gamification.AchievementsScreen
 import com.laba.firenze.ui.gamification.YearRecapScreen
 import com.laba.firenze.ui.gamification.AchievementUnlockedToast
 import com.laba.firenze.ui.gamification.AchievementDetailDialog
+import com.laba.firenze.ui.lessons.FullTimetableScreen
 import com.laba.firenze.ui.lessons.LessonDetailScreen
+import com.laba.firenze.ui.registratore.RegistratoreLezioniScreen
+import com.laba.firenze.ui.session.SessioneStudioScreen
 import android.net.Uri
 import com.laba.firenze.domain.model.Achievement
 import com.laba.firenze.MainActivityViewModel
 
 sealed class LABANavigation(val route: String, val icon: ImageVector, val title: String) {
-    object Home : LABANavigation("home", Icons.Default.Home, "Home")
+    object Home : LABANavigation("home", Icons.Default.Dashboard, "Bacheca")
     object Exams : LABANavigation("exams", Icons.AutoMirrored.Filled.Assignment, "Esami")
     object Courses : LABANavigation("courses", Icons.Default.School, "Corsi")
-    object Seminars : LABANavigation("seminars", Icons.Default.Event, "Seminari")
+    object Seminars : LABANavigation("seminars", Icons.Default.Event, "Attività")
     object Profile : LABANavigation("profile", Icons.Default.Person, "Profilo")
     object Benefits : LABANavigation("benefits", Icons.Default.Loyalty, "Convenzioni")
 }
@@ -404,6 +407,17 @@ fun LABANavigation(
             }
             composable("printer-guide") {
                 PrinterGuideScreen(navController)
+            }
+
+            // Attività (come iOS)
+            composable("sessione_studio") {
+                SessioneStudioScreen(navController)
+            }
+            composable("registratore_lezioni") {
+                RegistratoreLezioniScreen(navController)
+            }
+            composable("full_timetable") {
+                FullTimetableScreen(navController)
             }
             
             // Deep link: laba://lesson/{lessonId}

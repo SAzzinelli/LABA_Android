@@ -1,9 +1,11 @@
 package com.laba.firenze.ui.seminars
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -18,6 +20,7 @@ import java.util.Locale
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.laba.firenze.domain.model.Seminario
 import android.net.Uri
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,7 +38,7 @@ fun SeminarDetailScreen(
             topBar = {
                 TopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text("Seminario non trovato") },
+                    title = { Text("Attività non trovata") },
                     navigationIcon = {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Indietro")
@@ -50,7 +53,7 @@ fun SeminarDetailScreen(
                     .padding(innerPadding),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Seminario non trovato")
+                Text("Attività non trovata")
             }
         }
         return
@@ -63,7 +66,7 @@ fun SeminarDetailScreen(
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
-                title = { Text("Dettagli seminario") },
+                title = { Text("Dettaglio attività") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Indietro")
@@ -80,42 +83,51 @@ fun SeminarDetailScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 140.dp)
         ) {
-            // Titolo del seminario
+            // Hero card (titolo, docente, status pill + caption come iOS)
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
                     )
                 ) {
                     Column(
-                        modifier = Modifier.padding(20.dp)
+                        modifier = Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Text(
                             text = prettifyTitle(seminarTitle(seminar.titolo)),
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold
                         )
-                        
-                        if (details.completed) {
-                            Row(
-                                modifier = Modifier.padding(top = 12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Text(
-                                    text = "Seminario conseguito",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
+                        details.docente?.takeIf { it.isNotBlank() }?.let { docente ->
+                            Text(
+                                text = docente,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        SeminarDetailStatusPill(seminar = seminar)
+                        if (isSeminarioNonConvalidato(seminar)) {
+                            Text(
+                                text = "Potrebbe essere stato prenotato ma non frequentato oppure hai superato il limite di assenze consentite.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (isSeminarioNonRichiesto(seminar)) {
+                            Text(
+                                text = "La prenotazione non è più disponibile.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (isSeminarioPrenotatoInAttesa(seminar) && seminar.dataRichiesta != null) {
+                            Text(
+                                text = "Prenotato il ${formatDateDDMMYYYY(seminar.dataRichiesta)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -346,7 +358,7 @@ fun SeminarDetailScreen(
                                 modifier = Modifier.size(24.dp)
                             )
                             Text(
-                                text = "Hai frequentato il seminario!",
+                                text = "Hai frequentato l'attività!",
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium
                             )
@@ -398,6 +410,45 @@ fun SeminarDetailScreen(
                 }
             }
         )
+    }
+}
+
+private data class StatusPillState(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector, val bgColor: Color, val fgColor: Color)
+
+/** Pill stato seminario (come iOS statusPill): icon + label, colori distinti per stato. */
+@Composable
+private fun SeminarDetailStatusPill(seminar: Seminario) {
+    val state = when {
+        seminar.partecipato -> StatusPillState("Frequentato", Icons.Default.CheckCircle, Color(0xFF4CAF50), Color.White)
+        isSeminarioNonConvalidato(seminar) -> StatusPillState("Non convalidato", Icons.Default.Warning, Color(0xFFFF9800), Color.White)
+        isSeminarioPrenotatoInAttesa(seminar) -> StatusPillState("Prenotato", Icons.Default.Schedule, Color(0xFF2196F3), Color.White)
+        isSeminarioNonRichiesto(seminar) -> StatusPillState("Non prenotabile", Icons.Default.Cancel, Color.Gray, Color.White)
+        seminar.richiedibile -> StatusPillState("Prenotabile", Icons.Default.Event, MaterialTheme.colorScheme.primary, Color.White)
+        else -> null
+    }
+    if (state == null) return
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = state.bgColor
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = state.icon,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = state.fgColor
+            )
+            Text(
+                text = state.label,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = state.fgColor
+            )
+        }
     }
 }
 

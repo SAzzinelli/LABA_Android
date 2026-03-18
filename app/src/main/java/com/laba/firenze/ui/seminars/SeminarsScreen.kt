@@ -3,6 +3,8 @@ package com.laba.firenze.ui.seminars
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -14,14 +16,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.laba.firenze.domain.model.Esame
 import com.laba.firenze.domain.model.Seminario
 import com.laba.firenze.ui.common.prettifyTitle
 
@@ -34,99 +43,268 @@ fun SeminarsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val keyboardController = LocalSoftwareKeyboardController.current
     
-    // Track section visit
     LaunchedEffect(Unit) {
         viewModel.trackSectionVisit("seminari")
     }
     
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
-        // Top App Bar
-        TopAppBar(
-            title = { Text("Seminari") }
-        )
+    Column(modifier = Modifier.fillMaxSize()) {
+        TopAppBar(title = { Text("Attività a scelta") })
         
-        // Filtro - SOTTO la barra di ricerca (come iOS: Tutti / Disponibili / Frequentati)
-        var selectedFilter by remember { mutableStateOf(SeminariFilter.TUTTI) }
-        
-        // Barra di ricerca - PRIMA dei tabs
-        OutlinedTextField(
-            value = uiState.searchQuery,
-            onValueChange = viewModel::updateSearchQuery,
+        // Tab segmentato (come iOS: Seminari | Attività integrative)
+        SingleChoiceSegmentedButtonRow(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            placeholder = { Text("Cerca seminari") },
-            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-            singleLine = true,
-            shape = RoundedCornerShape(28.dp), // Forma capsula
-            trailingIcon = {
-                if (uiState.searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { viewModel.updateSearchQuery("") }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Clear")
-                    }
-                }
-            },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(
-                onSearch = { keyboardController?.hide() }
-            )
-        )
-        
-        // Filtro - SOTTO la barra di ricerca
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
-            SeminariFilter.entries.forEach { filter ->
-                val isSelected = selectedFilter == filter
-                FilterChip(
-                    onClick = {
-                        selectedFilter = filter
-                        viewModel.setFilter(filter)
-                    },
-                    label = { Text(filter.label) },
-                    selected = isSelected,
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(20.dp)),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                        containerColor = Color.Transparent
-                    ),
-                    shape = RoundedCornerShape(20.dp)
+            SegmentedButton(
+                selected = uiState.selectedTab == AttivitaSceltaTab.SEMINARI,
+                onClick = { viewModel.setSelectedTab(AttivitaSceltaTab.SEMINARI) },
+                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                label = { Text("Seminari") }
+            )
+            SegmentedButton(
+                selected = uiState.selectedTab == AttivitaSceltaTab.ATTIVITA_INTEGRATIVE,
+                onClick = { viewModel.setSelectedTab(AttivitaSceltaTab.ATTIVITA_INTEGRATIVE) },
+                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                label = { Text("Attività integrative") }
+            )
+        }
+        
+        when (uiState.selectedTab) {
+            AttivitaSceltaTab.SEMINARI -> SeminariTabContent(
+                uiState = uiState,
+                viewModel = viewModel,
+                keyboardController = keyboardController,
+                navController = navController
+            )
+            AttivitaSceltaTab.ATTIVITA_INTEGRATIVE -> AttivitaIntegrativeTabContent(
+                uiState = uiState,
+                viewModel = viewModel,
+                keyboardController = keyboardController
+            )
+        }
+    }
+}
+
+@Composable
+private fun SeminariTabContent(
+    uiState: SeminarsUiState,
+    viewModel: SeminarsViewModel,
+    keyboardController: androidx.compose.ui.platform.SoftwareKeyboardController?,
+    navController: NavController
+) {
+    var selectedFilter by remember { mutableStateOf(uiState.filter) }
+    LaunchedEffect(uiState.filter) { selectedFilter = uiState.filter }
+    
+    OutlinedTextField(
+        value = uiState.searchQuery,
+        onValueChange = viewModel::updateSearchQuery,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        placeholder = { Text("Cerca seminari") },
+        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        singleLine = true,
+        shape = RoundedCornerShape(28.dp),
+        trailingIcon = {
+            if (uiState.searchQuery.isNotEmpty()) {
+                IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                    Icon(Icons.Default.Clear, contentDescription = "Clear")
+                }
+            }
+        },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() })
+    )
+    
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        SeminariFilter.entries.forEach { filter ->
+            val isSelected = selectedFilter == filter
+            FilterChip(
+                onClick = {
+                    selectedFilter = filter
+                    viewModel.setFilter(filter)
+                },
+                label = { Text(filter.label) },
+                selected = isSelected,
+                modifier = Modifier.weight(1f).clip(RoundedCornerShape(20.dp)),
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                    containerColor = Color.Transparent
+                ),
+                shape = RoundedCornerShape(20.dp)
+            )
+        }
+    }
+    
+    if (uiState.seminars.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            EmptyFilterState(filter = uiState.filter)
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(uiState.seminars) { seminar ->
+                SeminarCard(
+                    seminar = seminar,
+                    onClick = { navController.navigate("seminar-detail/${seminar.oid}") }
                 )
             }
         }
-        
-        // Lista seminari (filtrata)
-        if (uiState.seminars.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                EmptyFilterState(filter = uiState.filter)
+    }
+}
+
+@Composable
+private fun AttivitaIntegrativeTabContent(
+    uiState: SeminarsUiState,
+    viewModel: SeminarsViewModel,
+    keyboardController: androidx.compose.ui.platform.SoftwareKeyboardController?
+) {
+    OutlinedTextField(
+        value = uiState.searchQueryAttivitaIntegrative,
+        onValueChange = viewModel::updateSearchQueryAttivitaIntegrative,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        placeholder = { Text("Cerca attività integrative") },
+        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        singleLine = true,
+        shape = RoundedCornerShape(28.dp),
+        trailingIcon = {
+            if (uiState.searchQueryAttivitaIntegrative.isNotEmpty()) {
+                IconButton(onClick = { viewModel.updateSearchQueryAttivitaIntegrative("") }) {
+                    Icon(Icons.Default.Clear, contentDescription = "Clear")
+                }
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(uiState.seminars) { seminar ->
-                    SeminarCard(
-                        seminar = seminar,
-                        onClick = {
-                            navController.navigate("seminar-detail/${seminar.oid}")
-                        }
+        },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() })
+    )
+    
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 120.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (uiState.filteredThesisExams.isNotEmpty()) {
+            items(uiState.filteredThesisExams) { esame ->
+                TesiFinaleRow(esame = esame, viewModel = viewModel)
+            }
+        }
+        
+        item {
+            Section(
+                title = "Esperienze formative",
+                content = {
+                    TirociniPlaceholder()
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun TesiFinaleRow(esame: Esame, viewModel: SeminarsViewModel) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.School,
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = prettifyTitle(esame.corso),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                viewModel.formatCFA(esame.cfa)?.let { cfa ->
+                    Text(
+                        text = "$cfa CFA",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
+            if (viewModel.isTesiSuperata(esame)) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = Color(0xFF4CAF50)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun Section(
+    title: String,
+    content: @Composable () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+        content()
+    }
+}
+
+@Composable
+private fun TirociniPlaceholder() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Work,
+                contentDescription = null,
+                modifier = Modifier.size(36.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "Tirocini",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "Quando inizierai un tirocinio, lo troverai qui insieme alle ore registrate e ai CFA ottenuti.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
@@ -158,22 +336,7 @@ private fun SeminarCard(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
                 )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (!seminar.partecipato && seminar.richiedibile) {
-                        BookablePill()
-                    }
-                    if (seminar.partecipato) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = Color(0xFF4CAF50)
-                        )
-                    }
-                }
+                SeminarRowStatusIcon(seminar = seminar)
             }
             
             if (seminar.docente != null) {
@@ -196,7 +359,6 @@ private fun SeminarCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                
                 if (seminar.aula != null) {
                     Text(
                         text = seminar.aula,
@@ -209,17 +371,70 @@ private fun SeminarCard(
     }
 }
 
+/** Icona stato seminario (ordine come iOS): partecipato → check verde; non convalidato → info arancione; prenotato in attesa → calendar blu; richiedibile → pallino blu pulsante; else → cerchio grigio con —. */
 @Composable
-private fun BookablePill() {
-    Surface(
-        color = MaterialTheme.colorScheme.primary,
-        shape = MaterialTheme.shapes.small
+private fun SeminarRowStatusIcon(seminar: Seminario) {
+    when {
+        seminar.partecipato -> Icon(
+            imageVector = Icons.Default.CheckCircle,
+            contentDescription = "Frequentato",
+            modifier = Modifier.size(20.dp),
+            tint = Color(0xFF4CAF50)
+        )
+        isSeminarioNonConvalidato(seminar) -> Icon(
+            imageVector = Icons.Default.Info,
+            contentDescription = "Non convalidato",
+            modifier = Modifier.size(20.dp),
+            tint = Color(0xFFFF9800)
+        )
+        isSeminarioPrenotatoInAttesa(seminar) -> Icon(
+            imageVector = Icons.Default.Schedule,
+            contentDescription = "Prenotato",
+            modifier = Modifier.size(20.dp),
+            tint = Color(0xFF2196F3)
+        )
+        seminar.richiedibile -> BlinkingBlueDot()
+        else -> SeminarDaSostenereBadge()
+    }
+}
+
+@Composable
+private fun BlinkingBlueDot() {
+    val infiniteTransition = rememberInfiniteTransition(label = "blink")
+    val opacity by infiniteTransition.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "opacity"
+    )
+    Box(
+        modifier = Modifier
+            .size(18.dp)
+            .drawBehind {
+                drawCircle(color = Color(0xFF2196F3).copy(alpha = opacity))
+            }
+    )
+}
+
+@Composable
+private fun SeminarDaSostenereBadge() {
+    Box(
+        modifier = Modifier
+            .size(18.dp)
+            .background(
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                shape = CircleShape
+            ),
+        contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "Prenotabile",
+            text = "—",
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onPrimary,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+            fontWeight = FontWeight.SemiBold
         )
     }
 }
@@ -243,8 +458,9 @@ private fun EmptyFilterState(filter: SeminariFilter) {
             )
             Text(
                 text = when (filter) {
-                    SeminariFilter.FREQUENTATI -> "Nessun seminario frequentato e convalidato"
-                    else -> if (filter == SeminariFilter.TUTTI) "Nessun seminario disponibile" else "Nessun seminario trovato"
+                    SeminariFilter.FREQUENTATI -> "Nessuna attività frequentata e convalidata"
+                    SeminariFilter.PRENOTABILI -> "Nessuna attività prenotabile al momento"
+                    SeminariFilter.TUTTI -> "Nessuna attività disponibile"
                 },
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center,

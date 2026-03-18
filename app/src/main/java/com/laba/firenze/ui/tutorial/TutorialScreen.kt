@@ -93,7 +93,7 @@ fun TutorialScreen(
             ),
             TutorialPage(
                 id = 4,
-                title = "Seminari e workshop",
+                title = "Attività",
                 subtitle = "",
                 content = "Partecipa alle attività extra e amplia il tuo percorso formativo oltre le lezioni.",
                 iconId = "event",

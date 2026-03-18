@@ -9,7 +9,7 @@ enum class NotificationCategory(
     PROFESSORS("comunicazioni", "Comunicazioni dai docenti", "notifications.professors"),
     GENERAL("generali", "Comunicazioni generali", "notifications.general"),
     EVENTS("eventi_laba", "Eventi LABA", "notifications.events"),
-    SEMINARS("seminari", "Seminari", "notifications.seminars"),
+    SEMINARS("seminari", "Attività", "notifications.seminars"),
     GRADES("voti", "Voti", "notifications.grades"),
     MATERIALS("materiali", "Dispense e materiali", "notifications.materials"),
     ABSENCES("assenze", "Assenze docenti", "notifications.absences");

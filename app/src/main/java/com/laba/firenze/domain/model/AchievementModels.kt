@@ -13,7 +13,7 @@ enum class AchievementCategory(
     FIRST_STEPS("first_steps", "Primi Passi", "star.fill", 0xFF007AFF), // Blue
     EXAMS("exams", "Esami", "graduationcap.fill", 0xFFAF52DE), // Purple
     PERFORMANCE("performance", "Performance", "flame.fill", 0xFFFF3B30), // Red
-    SEMINARS("seminars", "Seminari", "calendar.badge.clock", 0xFFFF9500), // Orange
+    SEMINARS("seminars", "Attività", "calendar.badge.clock", 0xFFFF9500), // Orange
     CFA("cfa", "Crediti", "chart.bar.fill", 0xFF34C759), // Green
     APP_USAGE("app_usage", "Utilizzo App", "iphone", 0xFF5AC8FA), // Cyan
     EASTER_EGGS("easter_eggs", "Easter Eggs", "sparkles", 0xFFFF2D55), // Pink
