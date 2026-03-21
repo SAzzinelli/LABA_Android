@@ -431,9 +431,9 @@ class HomeViewModel @Inject constructor(
                 val totalExamsCount = validExams.size
                 val missingExamsCount = max(0, totalExamsCount - passedExamsCount)
                 
-                // CFA calculations (exactly like iOS)
+                // CFA calculations: da API (solo test) se disponibili, altrimenti calcolo locale
                 val cfaTarget = calculateCfaTarget(exams)
-                val cfaEarned = calculateCfaEarned(exams, isGraduated)
+                val cfaEarned = calculateCfaEarned(exams, isGraduated, profile)
                 
                 // Year progress calculations
                 val yearProgress = calculateYearProgress(exams, profile?.currentYear?.toIntOrNull())
@@ -513,8 +513,14 @@ class HomeViewModel @Inject constructor(
         return totalCFA
     }
     
-    private fun calculateCfaEarned(exams: List<Esame>, isGraduated: Boolean): Int {
-        Log.d("HomeViewModel", "Calculating CFA from ${exams.size} exams")
+    private fun calculateCfaEarned(exams: List<Esame>, isGraduated: Boolean, profile: StudentProfile?): Int {
+        // API Test (v3): usa cfaEsami + cfaSeminari + cfaTirocini da LOGOS se presenti
+        if (profile != null && (profile.cfaEsami != null || profile.cfaSeminari != null || profile.cfaTirocini != null)) {
+            val sum = (profile.cfaEsami ?: 0) + (profile.cfaSeminari ?: 0) + (profile.cfaTirocini ?: 0)
+            Log.d("HomeViewModel", "Using CFA from API: cfaEsami=${profile.cfaEsami}, cfaSeminari=${profile.cfaSeminari}, cfaTirocini=${profile.cfaTirocini} -> $sum")
+            return sum
+        }
+        Log.d("HomeViewModel", "Calculating CFA from ${exams.size} exams (computed)")
         
         // Debug: stampa tutti gli esami con i loro CFA
         exams.forEach { exam ->

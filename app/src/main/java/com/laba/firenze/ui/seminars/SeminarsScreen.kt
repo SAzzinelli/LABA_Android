@@ -30,7 +30,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.laba.firenze.domain.model.Esame
+import com.laba.firenze.domain.model.InternshipPayload
 import com.laba.firenze.domain.model.Seminario
 import com.laba.firenze.ui.common.prettifyTitle
 
@@ -77,11 +77,7 @@ fun SeminarsScreen(
                 keyboardController = keyboardController,
                 navController = navController
             )
-            AttivitaSceltaTab.ATTIVITA_INTEGRATIVE -> AttivitaIntegrativeTabContent(
-                uiState = uiState,
-                viewModel = viewModel,
-                keyboardController = keyboardController
-            )
+            AttivitaSceltaTab.ATTIVITA_INTEGRATIVE -> AttivitaIntegrativeTabContent(internships = uiState.internships)
         }
     }
 }
@@ -164,48 +160,25 @@ private fun SeminariTabContent(
 }
 
 @Composable
-private fun AttivitaIntegrativeTabContent(
-    uiState: SeminarsUiState,
-    viewModel: SeminarsViewModel,
-    keyboardController: androidx.compose.ui.platform.SoftwareKeyboardController?
-) {
-    OutlinedTextField(
-        value = uiState.searchQueryAttivitaIntegrative,
-        onValueChange = viewModel::updateSearchQueryAttivitaIntegrative,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        placeholder = { Text("Cerca attività integrative") },
-        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-        singleLine = true,
-        shape = RoundedCornerShape(28.dp),
-        trailingIcon = {
-            if (uiState.searchQueryAttivitaIntegrative.isNotEmpty()) {
-                IconButton(onClick = { viewModel.updateSearchQueryAttivitaIntegrative("") }) {
-                    Icon(Icons.Default.Clear, contentDescription = "Clear")
-                }
-            }
-        },
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() })
-    )
-    
+private fun AttivitaIntegrativeTabContent(internships: List<InternshipPayload>) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 120.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (uiState.filteredThesisExams.isNotEmpty()) {
-            items(uiState.filteredThesisExams) { esame ->
-                TesiFinaleRow(esame = esame, viewModel = viewModel)
-            }
-        }
-        
         item {
             Section(
                 title = "Esperienze formative",
                 content = {
-                    TirociniPlaceholder()
+                    if (internships.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            internships.forEach { t ->
+                                InternshipCard(internship = t)
+                            }
+                        }
+                    } else {
+                        TirociniPlaceholder()
+                    }
                 }
             )
         }
@@ -213,45 +186,84 @@ private fun AttivitaIntegrativeTabContent(
 }
 
 @Composable
-private fun TesiFinaleRow(esame: Esame, viewModel: SeminarsViewModel) {
+private fun InternshipCard(internship: InternshipPayload) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.School,
-                contentDescription = null,
-                modifier = Modifier.size(28.dp),
-                tint = MaterialTheme.colorScheme.primary
+            Text(
+                text = internship.descrizione ?: "Tirocinio",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
             )
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = prettifyTitle(esame.corso),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                viewModel.formatCFA(esame.cfa)?.let { cfa ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                internship.annoAccademicoInizio?.let { anno ->
+                    Text(
+                        text = "Anno $anno${internship.annoAccademicoFine?.let { "–$it" } ?: ""}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                internship.periodoTirocinioDal?.let { dal ->
+                    Text(
+                        text = "Dal ${dal.take(10)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                internship.periodoTirocinioAl?.let { al ->
+                    Text(
+                        text = "Al ${al.take(10)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                internship.cfa?.let { cfa ->
                     Text(
                         text = "$cfa CFA",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-            if (viewModel.isTesiSuperata(esame)) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = Color(0xFF4CAF50)
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (internship.relazioneFinale == true) {
+                    Text(
+                        text = "Relazione finale inviata",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                if (internship.moduloOre == true) {
+                    Text(
+                        text = "Modulo ore inviato",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+                }
+                if (internship.biennio == true || internship.triennio == true) {
+                    Text(
+                        text = listOfNotNull(
+                            internship.biennio?.takeIf { it }?.let { "Biennio" },
+                            internship.triennio?.takeIf { it }?.let { "Triennio" }
+                        ).joinToString(" / "),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

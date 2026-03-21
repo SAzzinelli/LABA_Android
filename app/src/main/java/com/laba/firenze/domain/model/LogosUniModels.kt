@@ -31,6 +31,10 @@ data class StudentProfile(
     val status: String? = null,
     val currentYear: String? = null,
     val pianoStudi: String? = null,
+    /** API Test (v3): CFA da LOGOS. Se presenti, usare somma come cfaEarned. */
+    val cfaEsami: Int? = null,
+    val cfaSeminari: Int? = null,
+    val cfaTirocini: Int? = null,
     val nome: String? = null,
     val cognome: String? = null,
     val matricola: String? = null,
@@ -79,7 +83,11 @@ data class EnrollmentsPayload(
     val stato: String? = null,         // Come iOS
     val annoAttuale: Int? = null,       // Come iOS
     val pianoStudi: String? = null,     // Come iOS
-    val situazioneEsami: List<EsamePayload>? = null  // Come iOS
+    val situazioneEsami: List<EsamePayload>? = null,  // Come iOS
+    /** API Test (v3): CFA da LOGOS - esami, seminari, tirocini (solo numerici in test) */
+    val cfaEsami: Int? = null,
+    val cfaSeminari: Int? = null,
+    val cfaTirocini: Int? = null
 ) : Parcelable
 
 @Parcelize
@@ -167,7 +175,9 @@ data class Seminario(
     val esito: String? = null,
     val gruppiStudenti: List<String> = emptyList(),
     /** true quando partecipato/convalidato dalla segreteria */
-    val partecipato: Boolean = false
+    val partecipato: Boolean = false,
+    /** Task 72: cfa numerico da GET Seminars (v3) */
+    val cfa: Int? = null
 ) : Parcelable
 
 @Parcelize
@@ -180,7 +190,9 @@ data class SeminarioPayload(
     val esitoRichiesta: String? = null,
     val richiedibile: String? = null,
     /** v3: Y quando la segreteria spunta "partecipato" in LOGOS.UNI; N default */
-    val partecipato: String? = null
+    val partecipato: String? = null,
+    /** Task 72: cfa numerico in GET Seminars (v3) */
+    val cfa: Int? = null
 ) : Parcelable
 
 @Parcelize
@@ -213,6 +225,29 @@ data class SeminariResponseV3(
         }
     }
 }
+
+// MARK: - Internships (API Test v3)
+@Parcelize
+data class InternshipPayload(
+    val oid: String? = null,
+    val descrizione: String? = null,
+    val annoAccademicoInizio: Int? = null,
+    val annoAccademicoFine: Int? = null,
+    val periodoTirocinioDal: String? = null,
+    val periodoTirocinioAl: String? = null,
+    val cfa: Int? = null,
+    val relazioneFinale: Boolean? = null,
+    val moduloOre: Boolean? = null,
+    val biennio: Boolean? = null,
+    val triennio: Boolean? = null
+) : Parcelable
+
+data class InternshipsResponse(
+    val success: Boolean = false,
+    val payload: List<InternshipPayload>? = null,
+    val errors: List<ApiError>? = null,
+    val errorSummary: String? = null
+)
 
 // MARK: - Notification Models
 

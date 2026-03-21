@@ -51,6 +51,9 @@ class SessionRepository @Inject constructor(
     private val _seminars = MutableStateFlow<List<Seminario>>(emptyList())
     val seminars: StateFlow<List<Seminario>> = _seminars.asStateFlow()
     
+    private val _internships = MutableStateFlow<List<InternshipPayload>>(emptyList())
+    val internships: StateFlow<List<InternshipPayload>> = _internships.asStateFlow()
+    
     private val _notifications = MutableStateFlow<List<NotificationItem>>(emptyList())
     val notifications: StateFlow<List<NotificationItem>> = _notifications.asStateFlow()
     
@@ -272,6 +275,7 @@ class SessionRepository @Inject constructor(
         // Pulisce i dati
         _exams.value = emptyList()
         _seminars.value = emptyList()
+        _internships.value = emptyList()
         _notifications.value = emptyList()
 
         Log.d("SessionRepository", "Logout completed")
@@ -404,7 +408,10 @@ class SessionRepository @Inject constructor(
                     val updatedProfile = profile.copy(
                         status = enrollmentsPayload.stato,
                         currentYear = enrollmentsPayload.annoAttuale?.toString(),
-                        pianoStudi = enrollmentsPayload.pianoStudi
+                        pianoStudi = enrollmentsPayload.pianoStudi,
+                        cfaEsami = enrollmentsPayload.cfaEsami,
+                        cfaSeminari = enrollmentsPayload.cfaSeminari,
+                        cfaTirocini = enrollmentsPayload.cfaTirocini
                     )
                     tokenManager.saveUserProfile(updatedProfile)
                     Log.d("SessionRepository", "Updated profile with enrollments data")
@@ -457,6 +464,28 @@ class SessionRepository @Inject constructor(
             Log.d("SessionRepository", "Loaded ${seminars.size} seminars")
         } catch (e: Exception) {
             Log.d("SessionRepository", "Error loading seminars: ${e.message}")
+        }
+    }
+    
+    /** PUT Seminars — Prenota seminario. Task 67: ritorna (success, warning). warning quando seminario pieno ma richiesta registrata. */
+    suspend fun bookSeminar(seminarOid: String): Pair<Boolean, String?> {
+        val token = tokenStore.getCurrentAccessToken()
+        if (token.isEmpty()) throw RuntimeException("Token non disponibile")
+        return apiClient.bookSeminar(token, seminarOid)
+    }
+    
+    /** Carica tirocini da GET /api/Internships - solo API Test (v3). Su errore → lista vuota. */
+    private suspend fun loadInternships() {
+        if (!isApiV3()) return
+        try {
+            val token = tokenStore.getCurrentAccessToken()
+            if (token.isEmpty()) return
+            val list = apiClient.getInternships(token)
+            _internships.value = list
+            Log.d("SessionRepository", "Loaded ${list.size} internships (v3)")
+        } catch (e: Exception) {
+            Log.d("SessionRepository", "Internships error: ${e.message} → empty list")
+            _internships.value = emptyList()
         }
     }
     

@@ -20,6 +20,17 @@ interface LogosUniApiService {
     @GET("Seminars")
     suspend fun getSeminars(@Header("Authorization") token: String): Response<SeminariResponseV3>
 
+    /** PUT /api/Seminars?seminarOid= — Register for seminar. Task 67: response may include warning when full. */
+    @PUT("Seminars")
+    suspend fun bookSeminar(
+        @Header("Authorization") token: String,
+        @Query("seminarOid") seminarOid: String
+    ): Response<BookSeminarResponse>
+
+    /** GET /api/Internships - solo API Test (v3) */
+    @GET("Internships")
+    suspend fun getInternships(@Header("Authorization") token: String): Response<InternshipsResponse>
+
     @POST("Notification/GetNotifications") // Corretto: POST secondo documentazione API
     @Headers("Content-Type: application/json")
     suspend fun getNotifications(
@@ -85,5 +96,14 @@ interface LogosUniApiService {
 
 data class ChangePasswordResponse(
     val success: Boolean,
+    val errorSummary: String? = null
+)
+
+/** Risposta PUT Seminars. Task 67: warning popolato quando success=true ma es. seminario pieno. */
+data class BookSeminarResponse(
+    val success: Boolean = false,
+    val warning: String? = null,
+    val payload: Boolean? = null,
+    val errors: List<ApiError>? = null,
     val errorSummary: String? = null
 )

@@ -4,7 +4,7 @@ import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.laba.firenze.data.repository.SessionRepository
-import com.laba.firenze.domain.model.Esame
+import com.laba.firenze.domain.model.InternshipPayload
 import com.laba.firenze.domain.model.Seminario
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -28,21 +28,7 @@ class SeminarsViewModel @Inject constructor(
     
     init {
         loadSeminars()
-        loadThesisExams()
-    }
-    
-    private fun loadThesisExams() {
-        viewModelScope.launch {
-            sessionRepository.allExams.collect { exams ->
-                val thesis = exams.filter { it.corso.uppercase().contains("TESI FINALE") }
-                val state = _uiState.value
-                val queryAltro = state.searchQueryAttivitaIntegrative
-                _uiState.value = state.copy(
-                    thesisExams = thesis,
-                    filteredThesisExams = filterThesisByQuery(thesis, queryAltro)
-                )
-            }
-        }
+        loadInternships()
     }
     
     fun trackSectionVisit(section: String) {
@@ -61,23 +47,17 @@ class SeminarsViewModel @Inject constructor(
             }
         }
     }
-    
-    private fun filterThesisByQuery(thesis: List<Esame>, query: String): List<Esame> {
-        if (query.isBlank()) return thesis
-        val q = query.lowercase()
-        return thesis.filter { prettifyTitle(it.corso).lowercase().contains(q) }
+
+    private fun loadInternships() {
+        viewModelScope.launch {
+            sessionRepository.internships.collect { list ->
+                _uiState.value = _uiState.value.copy(internships = list)
+            }
+        }
     }
     
     fun setSelectedTab(tab: AttivitaSceltaTab) {
         _uiState.value = _uiState.value.copy(selectedTab = tab)
-    }
-    
-    fun updateSearchQueryAttivitaIntegrative(query: String) {
-        val state = _uiState.value
-        _uiState.value = state.copy(
-            searchQueryAttivitaIntegrative = query,
-            filteredThesisExams = filterThesisByQuery(state.thesisExams, query)
-        )
     }
     
     fun updateSearchQuery(query: String) {
@@ -153,6 +133,29 @@ class SeminarsViewModel @Inject constructor(
         }
     }
     
+    /** Prenota seminario. Task 67: su success con warning, imposta bookingSeminarWarning per alert. */
+    fun bookSeminar(seminarOid: String, onError: (String) -> Unit = {}) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(bookingSeminarInProgress = true, bookingSeminarWarning = null)
+            try {
+                val (success, warning) = sessionRepository.bookSeminar(seminarOid)
+                _uiState.value = _uiState.value.copy(bookingSeminarInProgress = false)
+                if (success) {
+                    _uiState.value = _uiState.value.copy(bookingSeminarWarning = warning)
+                    sessionRepository.loadSeminars()
+                    loadSeminars()
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(bookingSeminarInProgress = false)
+                onError(e.message ?: "Errore durante la prenotazione")
+            }
+        }
+    }
+    
+    fun clearBookingSeminarWarning() {
+        _uiState.value = _uiState.value.copy(bookingSeminarWarning = null)
+    }
+    
     fun getSeminarById(seminarId: String): Seminario? {
         return _uiState.value.allSeminars.find { it.oid == seminarId }
     }
@@ -162,15 +165,6 @@ class SeminarsViewModel @Inject constructor(
         val s = raw?.trim() ?: return null
         if (s.isEmpty()) return null
         return s.toIntOrNull()?.toString() ?: s
-    }
-    
-    /** True se tesi superata (voto valorizzato, data sostenuto, o idoneo). */
-    fun isTesiSuperata(e: Esame): Boolean {
-        val v = (e.voto ?: "").trim()
-        if (v.isNotEmpty()) return true
-        if (e.data != null) return true
-        val low = v.lowercase()
-        return low.contains("idoneo") || low.contains("idonea") || low.contains("idoneità")
     }
 }
 
@@ -184,11 +178,12 @@ data class SeminarsUiState(
     val selectedTab: AttivitaSceltaTab = AttivitaSceltaTab.SEMINARI,
     val allSeminars: List<Seminario> = emptyList(),
     val seminars: List<Seminario> = emptyList(),
+    val internships: List<InternshipPayload> = emptyList(),
     val searchQuery: String = "",
-    val searchQueryAttivitaIntegrative: String = "",
     val filter: SeminariFilter = SeminariFilter.TUTTI,
-    val thesisExams: List<Esame> = emptyList(),
-    val filteredThesisExams: List<Esame> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val bookingSeminarInProgress: Boolean = false,
+    /** Task 67: warning da mostrare quando prenotazione ok ma es. seminario pieno */
+    val bookingSeminarWarning: String? = null
 )

@@ -1,6 +1,7 @@
 package com.laba.firenze.data.api
 
 import android.content.Context
+import android.util.Log
 import com.google.gson.Gson
 import com.laba.firenze.domain.model.*
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -166,7 +167,8 @@ class LogosUniAPIClient @Inject constructor(
                             documentOid = seminarPayload.documentOid,
                             esito = esito,
                             gruppiStudenti = emptyList(),
-                            partecipato = part
+                            partecipato = part,
+                            cfa = seminarPayload.cfa
                         )
                     }
                     println("🔐 LogosUniAPIClient: Mapped ${seminars.size} seminars from API response")
@@ -178,6 +180,54 @@ class LogosUniAPIClient @Inject constructor(
             } catch (e: Exception) {
                 println("🔐 LogosUniAPIClient: Seminars exception: ${e.message}")
                 e.printStackTrace()
+                emptyList()
+            }
+        }
+    }
+    
+    /** PUT Seminars — Register for seminar. Task 67: returns (success, warning). warning quando seminario pieno ma richiesta registrata. */
+    suspend fun bookSeminar(token: String, seminarOid: String): Pair<Boolean, String?> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.bookSeminar("Bearer $token", seminarOid)
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    val success = body?.success == true
+                    val warning = body?.warning?.takeIf { it.isNotBlank() }
+                    if (success) return@withContext Pair(true, warning)
+                    val errMsg = body?.errorSummary
+                        ?: (body?.errors?.firstOrNull()?.message)
+                        ?: "Prenotazione fallita"
+                    throw RuntimeException(errMsg)
+                } else {
+                    val errBody = response.errorBody()?.string() ?: "HTTP ${response.code()}"
+                    throw RuntimeException(errBody)
+                }
+            } catch (e: Exception) {
+                if (e is RuntimeException) throw e
+                throw RuntimeException(e.message ?: "Book seminar failed")
+            }
+        }
+    }
+    
+    /** GET /api/Internships - solo API Test (v3). Su 404/errore ritorna lista vuota. */
+    suspend fun getInternships(token: String): List<InternshipPayload> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.getInternships("Bearer $token")
+                when {
+                    response.isSuccessful -> response.body()?.payload ?: emptyList()
+                    response.code() == 404 -> {
+                        Log.d("LogosUniAPIClient", "Internships 404 (endpoint may not exist in prod) → empty list")
+                        emptyList()
+                    }
+                    else -> {
+                        Log.w("LogosUniAPIClient", "Internships failed: ${response.code()} → empty list")
+                        emptyList()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w("LogosUniAPIClient", "Internships exception: ${e.message} → empty list")
                 emptyList()
             }
         }

@@ -31,7 +31,8 @@ fun SeminarDetailScreen(
     viewModel: SeminarsViewModel = hiltViewModel()
 ) {
     val seminar = viewModel.getSeminarById(seminarId)
-    var showBookingAlert by remember { mutableStateOf(false) }
+    val uiState by viewModel.uiState.collectAsState()
+    var showBookingConfirm by remember { mutableStateOf(false) }
     
     if (seminar == null) {
         Scaffold(
@@ -175,6 +176,21 @@ fun SeminarDetailScreen(
                     ) {
                         Text(
                             text = aula,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+            }
+            
+            // CFA (Task 72: da GET Seminars v3)
+            seminar.cfa?.let { cfa ->
+                item {
+                    DetailSection(
+                        title = "CFA",
+                        icon = Icons.Default.School
+                    ) {
+                        Text(
+                            text = "$cfa",
                             style = MaterialTheme.typography.bodyLarge
                         )
                     }
@@ -380,11 +396,17 @@ fun SeminarDetailScreen(
                             )
                         }
                         seminar.richiedibile -> Button(
-                            onClick = { showBookingAlert = true },
-                            modifier = Modifier.fillMaxWidth()
+                            onClick = { showBookingConfirm = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !uiState.bookingSeminarInProgress
                         ) {
-                            Icon(Icons.Default.CalendarMonth, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
+                            if (uiState.bookingSeminarInProgress) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                                Spacer(modifier = Modifier.width(8.dp))
+                            } else {
+                                Icon(Icons.Default.CalendarMonth, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
                             Text("Prenota partecipazione")
                         }
                         else -> Text(
@@ -398,14 +420,35 @@ fun SeminarDetailScreen(
         }
     }
     
-    // Alert prenotazione
-    if (showBookingAlert) {
+    // Conferma prenotazione
+    if (showBookingConfirm) {
         AlertDialog(
-            onDismissRequest = { showBookingAlert = false },
+            onDismissRequest = { showBookingConfirm = false },
             title = { Text("Prenotazione") },
-            text = { Text("Collegheremo qui l'endpoint di prenotazione appena disponibile.") },
+            text = { Text("Confermi di voler prenotare la partecipazione a questo seminario?") },
             confirmButton = {
-                TextButton(onClick = { showBookingAlert = false }) {
+                TextButton(onClick = {
+                    showBookingConfirm = false
+                    viewModel.bookSeminar(seminar!!.oid)
+                }) {
+                    Text("Conferma")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBookingConfirm = false }) {
+                    Text("Annulla")
+                }
+            }
+        )
+    }
+    // Task 67: alert warning quando prenotazione ok ma es. seminario pieno
+    uiState.bookingSeminarWarning?.let { warning ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearBookingSeminarWarning() },
+            title = { Text("Prenotazione") },
+            text = { Text(warning) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearBookingSeminarWarning() }) {
                     Text("OK")
                 }
             }

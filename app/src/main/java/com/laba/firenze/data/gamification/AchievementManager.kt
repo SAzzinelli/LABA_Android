@@ -958,6 +958,12 @@ class AchievementManager @Inject constructor(
     }
     
     private fun computeCFAEarned(exams: List<Esame>, profile: StudentProfile?): Int {
+        // API Test (v3): usa cfaEsami + cfaSeminari + cfaTirocini da LOGOS se presenti
+        if (profile != null && (profile.cfaEsami != null || profile.cfaSeminari != null || profile.cfaTirocini != null)) {
+            val sum = (profile.cfaEsami ?: 0) + (profile.cfaSeminari ?: 0) + (profile.cfaTirocini ?: 0)
+            Log.d("AchievementManager", "Using CFA from API: ${profile.cfaEsami}+${profile.cfaSeminari}+${profile.cfaTirocini}=$sum")
+            return sum
+        }
         // 1) Esami con voto valido
         val examsEarned = exams.sumOf { exam ->
             val voto = exam.voto?.trim()?.uppercase() ?: ""
