@@ -21,7 +21,7 @@ enum class AppTab(
     
     // Optional / Hidden by default usually
     THESIS("thesis", "Tesi", Icons.Default.School), // Using School as graduationcap not always available, or check if available
-    HANDOUTS("handouts", "Dispense", Icons.Default.Description),
+    HANDOUTS("handouts", "Materiali", Icons.Default.Description),
     REGULATIONS("regulations", "Regolamenti", Icons.AutoMirrored.Filled.Rule), // Or Gavel? Rule is good
     PROGRAMS("materials", "Programmi", Icons.AutoMirrored.Filled.MenuBook); // materials route
 

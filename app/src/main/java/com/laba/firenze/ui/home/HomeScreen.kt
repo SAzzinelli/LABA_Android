@@ -145,7 +145,7 @@ fun HomeScreen(
                             viewModel = viewModel,
                             onNavigate = { route ->
                                 when (route) {
-                                    "Voto di laurea" -> navController.navigate("calcola-voto-laurea")
+                                    "Valutazione finale" -> navController.navigate("calcola-voto-laurea")
                                     "Simula la tua media" -> navController.navigate("simula-media")
                                 }
                             }
@@ -156,7 +156,7 @@ fun HomeScreen(
                             onNavigate = { route ->
                                 when (route) {
                                     "Service LABA" -> navController.navigate("strumentazione")
-                                    "Prenotazione Aule" -> navController.navigate("prenotazione-aule")
+                                    "Prenota le aule" -> navController.navigate("prenotazione-aule")
                                     "Biblioteca" -> navController.navigate("biblioteca")
                                 }
                             },
@@ -652,7 +652,7 @@ private fun CareerAverageCard(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = "Clicca per scoprirla nel dettaglio",
+                text = "Dettaglio media",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -939,7 +939,7 @@ private fun PerTeSection(
                 .fillMaxWidth()
                 .clickable { 
                     if (canAccessGraduationGrade) {
-                        onNavigate("Voto di laurea")
+                        onNavigate("Valutazione finale")
                     } else {
                         showGraduationGradeAlert = true
                     }
@@ -966,7 +966,7 @@ private fun PerTeSection(
                         tint = if (canAccessGraduationGrade) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "Voto di laurea",
+                        text = "Valutazione finale",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
                         color = if (canAccessGraduationGrade) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
@@ -1109,7 +1109,7 @@ private fun ServiziSection(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onNavigate("Prenotazione Aule") },
+                .clickable { onNavigate("Prenota le aule") },
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             ),
@@ -1132,7 +1132,7 @@ private fun ServiziSection(
                         tint = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "Prenotazione Aule",
+                        text = "Prenota le aule",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium
                     )
